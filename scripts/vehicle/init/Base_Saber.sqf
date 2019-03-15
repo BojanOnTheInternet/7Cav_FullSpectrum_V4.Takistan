@@ -1,8 +1,10 @@
 //Currently Leopard 2
 
+private _desertMaps = ["Altis", "Takistan"];
+
 [_this select 0, {
 
-	if (worldName == "Altis") then {
+	if (worldName in _desertMaps) then {
 		(_this select 0) setObjectTextureGlobal [0, "Data\TankBodyTexture.paa"];
 		(_this select 0) setObjectTextureGlobal [1, "Data\TankTurretTexture.paa"];
 		(_this select 0) setObjectTextureGlobal [2, "Data\TankTurretMGTexture.paa"];
