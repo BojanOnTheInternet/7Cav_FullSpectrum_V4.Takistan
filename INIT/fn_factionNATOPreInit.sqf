@@ -32,7 +32,7 @@ SPM_AirDefense_RatingsWest =
 
 	["RHS_AH64D", [50, 2]],
 	["FIR_A10C", [120, 1]],
-	["FIR_F16C", [120, 1]]
+	["FIR_F16C_Blank", [120, 1]]
 ];
 
 // Air patrol
