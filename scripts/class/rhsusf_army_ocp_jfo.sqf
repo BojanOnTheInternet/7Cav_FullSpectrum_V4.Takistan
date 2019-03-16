@@ -13,7 +13,7 @@ if (_state == "init") then
 	{
 		// Let Apollo drive anything
 		player setVariable [_x, [[TypeFilter_All, [], {}]] + (player getVariable _x)];
-	} forEach ["VP_Driver"];
+	} forEach ["VP_Driver", "VP_Pilot"];
 };
 
 if (_state == "respawn") then

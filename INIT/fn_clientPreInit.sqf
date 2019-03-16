@@ -167,6 +167,7 @@ TypeFilter_LogisticsVehicles =
 	["rhsusf_M1230A1*", true], // Medical MRAP
 	["rhsusf_M109*", true], // SPG
 	["rhsusf_m113_usarmy_medical", true], //Medical M113
+	["B_APC_Tracked_01_CRV_F", true], //Bobcat
 	["All", false]
 ];
 
@@ -180,18 +181,10 @@ TypeFilter_InfantryVehicles =
 	["B_Truck_01_medical_F", false], // Medical HEMTTs
 	["C_IDAP_Van_02_medevac_F", false], // Ambulance
 	["rhsusf_m113_usarmy_medical", false], // Medical M113
+	["B_APC_Tracked_01_CRV_F", false], // Bobcat
+	
 	//Static weapoons
-	["B_HMG_01_*", true],
-	["RHS_Stinger_AA_pod*", true],
-	["RHS_TOW_TriPod*", true],
-	["B_Mortar_01_F", true],
-	["RHS_M2StaticMG_MiniTripod*", true],
-	["RHS_MK19_TriPod*", true],
-	["RHS_M2StaticMG*", true],
-	["RHS_M252_*", true],
-	["B_static_AA_F", true],
-	["rhsgref_ins_2b14", true],
-	["rhsgref_cdf_b_Igla_AA_pod", true],
+	["StaticWeapon", true],
 
 	//Available Ao vehicles
 	["LOP_US_UAZ_DshKM",true],
