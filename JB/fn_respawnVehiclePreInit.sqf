@@ -222,7 +222,7 @@ JB_RV_Monitor =
 
 			private _currentlyAbandoned = false;
 
-			if (_vehicle distance _startPosition >= _movedDistanceCondition) then
+			if (_vehicle distance2d _startPosition >= _movedDistanceCondition) then
 			{
 				if ({ alive _x } count crew _vehicle == 0) then
 				{
@@ -231,7 +231,7 @@ JB_RV_Monitor =
 					// Considered abandoned if no one is nearby and moving below a certain speed (i.e. driving by above that speed does not mark the vehicle as no longer abandoned)
 					_currentlyAbandoned = true;
 					{
-						if ((_x distance _vehicle) <= _abandonDistanceCondition && vectorMagnitude (_vehicleVelocity vectorDiff (velocity _x)) < ABANDON_SPEED) exitWith { _currentlyAbandoned = false };
+						if ((_x distance2d _vehicle) <= _abandonDistanceCondition && vectorMagnitude (_vehicleVelocity vectorDiff (velocity _x)) < ABANDON_SPEED) exitWith { _currentlyAbandoned = false };
 					} forEach (allPlayers select { not (_x isKindOf "HeadlessClient_F") });
 				};
 			};
