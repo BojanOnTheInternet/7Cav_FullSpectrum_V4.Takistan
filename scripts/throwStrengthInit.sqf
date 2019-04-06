@@ -16,10 +16,8 @@ CustomThrowing_Progress =
 	if (count _throwable > 0) then { [player, _throwable select 1] call BIS_fnc_fire };
 };
 
-CustomThrowing_KeyDown =
+CustomThrowing_Throw =
 {
-	if (inputAction "throw" == 0) exitWith { false };
-
 	if (count currentThrowable player > 0 && count JB_HA_CurrentAction == 0) then
 	{
 		[actionKeys "throw", FULL_THROW_TIME, 0.1, CustomThrowing_Progress] call JB_fnc_holdActionStart;
@@ -54,13 +52,13 @@ CustomThrowing_ThrowingScale = 0;
 			if (CustomThrowing_Enabled) then
 			{
 				player removeEventHandler ["Fired", CustomThrowing_FiredHandler];
-				(findDisplay 46) displayRemoveEventHandler ["KeyDown", CustomThrowing_KeyDownHandler];
+				[46, CustomThrowing_ThrowHandler] call JB_fnc_actionHandlerRemove;
 				CustomThrowing_Enabled = false;
 				systemchat "Mission-specific throwing system disabled";
 			}
 			else
 			{
-				CustomThrowing_KeyDownHandler = (findDisplay 46) displayAddEventHandler ["KeyDown", CustomThrowing_KeyDown];
+				CustomThrowing_ThrowHandler = [46, "Throw", CustomThrowing_Throw] call JB_fnc_actionHandlerAdd;
 				CustomThrowing_FiredHandler = player addEventHandler ["Fired", CustomThrowing_Fired];
 				CustomThrowing_Enabled = true;
 				systemchat "Mission-specific throwing system enabled";

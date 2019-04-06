@@ -49,7 +49,7 @@ OO_TRACE_DECL(SPM_MortarUnit_ExecuteFireMission) =
 	{
 		params ["_mortarUnit"];
 
-		scriptName "spawnSPM_MortarUnit_ExecuteFireMission";
+		scriptName "SPM_MortarUnit_ExecuteFireMission";
 
 		private _mortar = OO_GET(_mortarUnit,MortarUnit,Mortar);
 

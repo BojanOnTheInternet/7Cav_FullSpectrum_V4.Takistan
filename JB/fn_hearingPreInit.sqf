@@ -90,4 +90,4 @@ JB_HF_Monitor =
 	};
 };
 
-[] spawn { 	scriptName "spawnJB_HF_Monitor"; _this call JB_HF_Monitor };
+[] spawn { 	scriptName "JB_HF_Monitor"; _this call JB_HF_Monitor };

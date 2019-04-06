@@ -86,6 +86,7 @@ OO_TRACE_DECL(SPM_MissionRescueHostages_Create) =
 	["Name", "Garrison"] call OO_METHOD(_category,Category,SetTagValue);
 	OO_SET(_category,ForceCategory,RatingsWest,SPM_InfantryGarrison_RatingsWest);
 	OO_SET(_category,ForceCategory,SideEast,independent);
+	OO_SET(_category,ForceCategory,SkillLevel,0.35);
 	OO_SET(_category,ForceCategory,RatingsEast,SPM_InfantryGarrison_RatingsSyndikat);
 	OO_SET(_category,ForceCategory,CallupsEast,SPM_InfantryGarrison_CallupsSyndikat);
 	OO_SET(_category,InfantryGarrisonCategory,InitialCallupsEast,SPM_InfantryGarrison_InitialCallupsSyndikat);

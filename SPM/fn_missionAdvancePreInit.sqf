@@ -81,7 +81,6 @@ OO_TRACE_DECL(SPM_MissionAdvance_SendNotification) =
 
 	private _filter = OO_GET(_mission,Mission,ParticipantFilter);
 	private _notificationType = "NotificationGeneric";
-	private _messageTypes = ["notification"];
 	
 	switch (_type) do
 	{
@@ -338,7 +337,7 @@ OO_TRACE_DECL(SPM_MissionAdvance_AddFactionCSAT) =
 
 	private _ifritRating = -1; { if (_x select 0 == "LOP_US_UAZ_DshKM") exitWith { _ifritRating = (_x select 1 select 0) * (_x select 1 select 1) } } forEach SPM_MissionAdvance_Patrol_RatingsEast;
 	private _armorReserves = _ifritRating * round (_garrisonCountInitial / 16); // An Ifrit as support for every two squads in the initial garrison
-	_armorReserves = _armorReserves * (["AdvancePatrolVehicleStrength"] call Params_GetParamValue);
+	_armorReserves = _armorReserves * (["AdvancePatrolVehicleStrength"] call JB_MP_GetParamValue);
 
 	OO_SET(_category,ForceCategory,Reserves,_armorReserves);
 
@@ -439,8 +438,8 @@ OO_TRACE_DECL(SPM_MissionAdvance_AddFactionCSAT) =
 
 		case _isReinforcedGarrison:
 		{
-			// Send in reinforcements when we hit a quarter of the garrison population
-			private _garrisonCountReact = _garrisonCount * 0.25;
+			// Send in reinforcements when the garrison is significantly understrength
+			private _garrisonCountReact = _garrisonCount * 0.50;
 			// Reserves become available over a period of time (3-8 minutes)
 			private _mobilizationTime = (3*60) + random (5*60);
 
@@ -476,7 +475,7 @@ OO_TRACE_DECL(SPM_MissionAdvance_AddFactionCSAT) =
 			_objectives pushBack _headquarters;
 
 			// Set the minimum west force on the garrison so it will always try to match that from its reserves
-			private _minimumWestForce = [_garrisonCountInitial * _soldierRatingEast, _soldierRatingWest] call SPM_ForceRating_CreateForce;
+			private _minimumWestForce = [_garrisonCount * _soldierRatingEast, _soldierRatingWest] call SPM_ForceRating_CreateForce;
 			OO_SET(_garrison,ForceCategory,MinimumWestForce,_minimumWestForce);
 
 			// Create the mine fields
@@ -547,6 +546,7 @@ OO_TRACE_DECL(SPM_MissionAdvance_AddFactionCSAT) =
 		_assignedToDuty = _availableForDuty min floor (_garrisonCountInitial * 0.12); // 12 guys for garrison of 100, 3 guys per checkpoint = 4 checkpoints
 		_availableForDuty = _availableForDuty - _assignedToDuty;
 
+		//TODO: Find players within 5km and average their positions.  Create the checkpoints on that side of the mission (Coverage property)
 		private _area = OO_GET(_garrison,ForceCategory,Area);
 		_category = [_area, _garrison, _assignedToDuty] call OO_CREATE(CheckpointsCategory);
 
@@ -713,7 +713,7 @@ OO_TRACE_DECL(SPM_MissionAdvance_AddFactionSyndikat) =
 
 	// If the garrison has an effective reserve, create a transport category so they can come in
 	private _transport = OO_NULL;
-	if (_isReinforcedGarrison && false) then//TEST turn off transport to get them going in on foot
+	if (_isReinforcedGarrison && false) then // Vehicle transport is currently disabled
 	{
 		_category = [] call OO_CREATE(TransportCategory);
 		["Name", "PMCTransport"] call OO_METHOD(_category,Category,SetTagValue);
@@ -739,7 +739,7 @@ OO_TRACE_DECL(SPM_MissionAdvance_AddFactionSyndikat) =
 
 	private _offroadRating = -1; { if (_x select 0 == "LOP_US_UAZ_DshKM") exitWith { _offroadRating = (_x select 1 select 0) * (_x select 1 select 1) } } forEach SPM_MissionAdvance_Patrol_RatingsSyndikat;
 	private _armorReserves = _offroadRating * round (_garrisonCountInitial / 16); // An offroad as support for every two squads in the initial garrison
-	_armorReserves = _armorReserves * (["AdvancePatrolVehicleStrength"] call Params_GetParamValue);
+	_armorReserves = _armorReserves * (["AdvancePatrolVehicleStrength"] call JB_MP_GetParamValue);
 
 	OO_SET(_category,ForceCategory,Reserves,_armorReserves);
 
@@ -760,6 +760,7 @@ OO_TRACE_DECL(SPM_MissionAdvance_AddFactionSyndikat) =
 	OO_SET(_category,ForceCategory,SideEast,independent);
 	OO_SET(_category,ForceCategory,RatingsEast,_garrisonRatingsEast);
 	OO_SET(_category,ForceCategory,CallupsEast,_garrisonCallupsEast);
+	OO_SET(_category,ForceCategory,SkillLevel,0.4);
 	OO_SET(_category,InfantryGarrisonCategory,ActivityBorder,200);
 	OO_SET(_category,InfantryGarrisonCategory,InitialCallupsEast,_garrisonInitialCallupsEast);
 

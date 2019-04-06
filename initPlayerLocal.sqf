@@ -56,13 +56,18 @@ CLIENT_PlayerDisconnected =
 	} forEach CLIENT_PlayerDisconnectedHandlers;
 };
 
-inGameUISetEventHandler ["Action", "_this call CLIENT_ScrollMenuHandler"];
+inGameUISetEventHandler ["Action", "_this call CLIENT_ScrollMenuActionHandler"];
+inGameUISetEventHandler ["NextAction", "_this call CLIENT_ScrollMenuNextHandler"];
+inGameUISetEventHandler ["PrevAction", "_this call CLIENT_ScrollMenuPrevHandler"];
+
 // Lets keep doing this every few seconds to make sure permissions are always set
 [] spawn
 {
  while { true } do
  {
-	 inGameUISetEventHandler ["Action", "_this call CLIENT_ScrollMenuHandler"];
+	inGameUISetEventHandler ["Action", "_this call CLIENT_ScrollMenuActionHandler"];
+	inGameUISetEventHandler ["NextAction", "_this call CLIENT_ScrollMenuNextHandler"];
+	inGameUISetEventHandler ["PrevAction", "_this call CLIENT_ScrollMenuPrevHandler"];
 	 sleep 2;
  };
 };
@@ -103,24 +108,10 @@ player addEventHandler ["HandleRating", { 0 }];
 
 [] execVM "ASL_AdvancedSlingLoading\overrideStandardSlingLoading.sqf";
 [] execVM "scripts\vehiclePermissionsInit.sqf";
-[] execVM "scripts\curatorUtilitiesInit.sqf";
 
 [] call CLIENT_fnc_monitorGearInitPlayer;
-
 [] call JB_fnc_increasedFuelConsumption;
-
-//[] call JB_fnc_repackInit;
-//[] call JB_fnc_medicalInit;
-//[] call JB_fnc_flareInit;
-//[] call JB_fnc_ammoInitPlayer;
-//[] call JB_fnc_fuelInitPlayer;
-//[] call JB_fnc_earplugsInitPlayer;
-//[] call JB_fnc_internalStorageInitPlayer;
-//[] call JB_fnc_carryObjectInitPlayer;
-//[] call JB_fnc_containerInitPlayer;
-[CLIENT_EOD_SafeExtract] call JB_fnc_searchRubbleInitPlayer;
 [] call Tac2_fnc_fortifyPermissionsInitPlayer;
-
 [] call CLIENT_InitForceDryFire;
 [] call CLIENT_MonitorEnemyControlledAreas;
 

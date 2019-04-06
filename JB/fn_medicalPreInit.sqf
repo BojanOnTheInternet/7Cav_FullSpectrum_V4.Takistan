@@ -93,7 +93,7 @@ JBM_WeaponDescription =
 
 	if (_vehicle isKindOf "Man") then
 	{
-		_magazineWeapon = [_ammo, weapons _vehicle + ["Throw", "Put"]] call JBM_AmmoMagazineWeapon;
+		_magazineWeapon = [_ammo, weapons _vehicle + ["Put", "Throw"]] call JBM_AmmoMagazineWeapon;
 	}
 	else
 	{
@@ -107,7 +107,7 @@ JBM_WeaponDescription =
 			// If _gunnerCrew select 0 select 4 is true, then it's a person shooting from a vehicle
 			if (_gunnerCrew select 0 select 1 == "Turret" && (_gunnerCrew select 0 select 4)) then
 			{
-				_magazineWeapon = [_ammo, weapons (_gunnerCrew select 0 select 0) + ["Throw", "Put"]] call JBM_AmmoMagazineWeapon;
+				_magazineWeapon = [_ammo, weapons (_gunnerCrew select 0 select 0) + ["Put", "Throw"]] call JBM_AmmoMagazineWeapon;
 			}
 			else
 			{
@@ -117,7 +117,7 @@ JBM_WeaponDescription =
 		};
 	};
 
-	if (_magazineWeapon select 1 in ["Throw", "Put"]) exitWith { _magazineWeapon select 0 };
+	if (_magazineWeapon select 1 in ["Put", "Throw"]) exitWith { _magazineWeapon select 0 };
 
 	(_magazineWeapon select 1) + " (loaded with " + (_magazineWeapon select 0) + ")";
 };
@@ -225,7 +225,7 @@ JBM_HandleDamage =
 		_wounded setVariable ["JBM_Stabilized", nil, true];
 		_wounded setVariable ["JBM_Rewounded", true];
 
-		private _friendlyFire = isPlayer _instigator && { side _source == side _wounded } && { _instigator != _wounded };
+		private _friendlyFire = isPlayer _instigator && { side _instigator == side _wounded } && { _instigator != _wounded };
 
 		if (_friendlyFire) then
 		{
@@ -269,7 +269,7 @@ JBM_HandleDamage =
 					{
 						params ["_wounded", "_selection", "_source", "_projectile", "_instigator"];
 
-						scriptName "spawnJBM_HandleDamage";
+						scriptName "JBM_HandleDamage";
 
 						if (_source == _wounded) then
 						{
@@ -516,7 +516,7 @@ JBM_UpdateMedicMonitor =
 			};
 		};
 
-		if ((["ReviveSelf"] call Params_GetParamValue) == 1) then
+		if ((["ReviveSelf"] call JB_MP_GetParamValue) == 1) then
 		{
 			if (diag_tickTime > JBM_ReviveSelfTime) then
 			{
@@ -573,11 +573,11 @@ JBM_MedicMonitor =
 	JBM_MedicMonitorFields = [];
 	if (not isNil "JBM_MedicMonitorAction") then { diag_log "JBM_MedicMonitor: a non-nil JBM_MedicMonitorAction value is being overwritten." };
 	JBM_MedicMonitorAction = _wounded addAction ["Toggle medic list", { [_this select 0] call JBM_ToggleMedicMonitor }, nil, 0, false, true, "", "", -1, true];
-	private _respawnAction = _wounded addAction ["Respawn", { (_this select 0) setDamage 1 }, nil, 0, false, true, "", "", -1, true];
+	private _respawnAction = _wounded addAction ["Respawn", { if (["Do you really want to respawn?", "RESPAWN", true, true, findDisplay 46] call BIS_fnc_guiMessage) then { (_this select 0) setDamage 1 } }, nil, 0, false, true, "", "", -1, true];
 
 	private _reviveDelay = 1e30;
 	private _reviveAction = -1;
-	if ((["ReviveSelf"] call Params_GetParamValue) == 1) then
+	if ((["ReviveSelf"] call JB_MP_GetParamValue) == 1) then
 	{
 		_reviveDelay = linearConversion [START_REVIVE_SELF_COUNT, END_REVIVE_SELF_COUNT, (count (allPlayers select { not (_x isKindOf "HeadlessClient_F") })), START_REVIVE_SELF_TIME, END_REVIVE_SELF_TIME, true];
 		if (not (_wounded getUnitTrait "medic")) then { _reviveDelay = _reviveDelay * 1.2 };
@@ -878,16 +878,18 @@ JBM_R_HaveBeenRevived =
 	{
 		params ["_medic", "_usedMedicFirstAidKit", ["_health", 1.0]];
 
-		scriptName "spawnJBM_R_HaveBeenRevived";
+		scriptName "JBM_R_HaveBeenRevived";
 
 		if (lifeState player != "INCAPACITATED") exitWith { };
 
 		// Speed up the revive animation.  Spawn the code that resets the animation speed to normal so that if ANYTHING goes wrong, we're sure to get that done
-		player setAnimSpeedCoef REVIVE_ANIMATION_ACCELERATION;
-		[] spawn
+
+		private _animSpeedCoef = getAnimSpeedCoef player;
+		player setAnimSpeedCoef (_animSpeedCoef * REVIVE_ANIMATION_ACCELERATION);
+		[_animSpeedCoef] spawn
 		{
 			waitUntil { animationstate player find "amov" == 0 && animationstate player find "_" == -1 };
-			player setAnimSpeedCoef 1.0;
+			player setAnimSpeedCoef (_this select 0);
 		};
 
 		[player, _health] call JBM_Heal;
@@ -1032,7 +1034,7 @@ JBM_R_HaveBeenStabilized =
 	{
 		params ["_medic", "_usedMedicFirstAidKit"];
 
-		scriptName "spawnJBM_R_HaveBeenStabilized";
+		scriptName "JBM_R_HaveBeenStabilized";
 
 		if (lifeState player != "INCAPACITATED") exitWith { };
 
@@ -1104,7 +1106,7 @@ JBM_StabilizeWoundedHoldActionInterval =
 		[_passthrough select 1] call JBM_StabilizeWoundedInterrupted;
 	};
 
-	if (not ([_passthrough select 1] call JBM_StabilizeWoundedPossible)) exitWith
+	if (not ([_passthrough select 0] call JBM_StabilizeWoundedPossible)) exitWith
 	{
 		[] call JB_fnc_holdActionStop;
 		[_passthrough select 1] call JBM_StabilizeWoundedInterrupted;
@@ -1131,7 +1133,7 @@ JBM_StabilizeWoundedHoldAction =
 {
 	params ["_wounded", "_action"];
 
-	if (not ([player] call JBM_FirstAidKitAvailable) && { not ([_wounded] call JBM_FirstAidKitAvailable) }) exitWith { ["A first aid kit is required to revive wounded soldiers", 1] call JB_fnc_showBlackScreenMessage };
+	if (not ([player] call JBM_FirstAidKitAvailable) && { not ([_wounded] call JBM_FirstAidKitAvailable) }) exitWith { ["A first aid kit is required to stabilize wounded soldiers", 1] call JB_fnc_showBlackScreenMessage };
 
 	[actionKeys "action", 8.0, 1.0, JBM_StabilizeWoundedHoldActionInterval, [_wounded, animationState player]] call JB_fnc_holdActionStart;
 	[JB_HA_LABEL, str parseText ((player actionParams _action) select 0)] call JB_fnc_holdActionSetValue;
@@ -1273,11 +1275,11 @@ JBM_DragWounded =
 	{
 		params ["_wounded"];
 
-		if (lifeState _wounded != "INCAPACITATED") exitWith {}; // Use of cursorTarget sometimes feeds different values to the condition and the action
+		if (lifeState _wounded != "INCAPACITATED") exitWith {};
 
 		private _medic = player;
 
-		scriptName "spawnJBM_DragWounded";
+		scriptName "JBM_DragWounded";
 
 		_wounded setVariable ["JBM_ManuallyLoadedIntoVehicle", nil, true];
 
@@ -1625,7 +1627,7 @@ JBM_R_StartCarry =
 	{
 		params ["_medic", "_wounded", "_medicAnimation"];
 
-		scriptName "spawnJBM_R_StartCarry";
+		scriptName "JBM_R_StartCarry";
 
 		if (not local _wounded) then
 		{
@@ -1651,7 +1653,7 @@ JBM_R_StopCarry =
 	{
 		params ["_medic", "_wounded", "_medicAnimation"];
 
-		scriptName "spawnJBM_R_StopCarry";
+		scriptName "JBM_R_StopCarry";
 
 		if (local _wounded) then
 		{
@@ -1715,9 +1717,9 @@ JBM_CarryWounded =
 	{
 		params ["_wounded"];
 
-		if (lifeState _wounded != "INCAPACITATED") exitWith {}; // Use of cursorTarget sometimes feeds different values to the condition and the action
+		if (lifeState _wounded != "INCAPACITATED") exitWith {};
 
-		scriptName "spawnJBM_CarryWounded";
+		scriptName "JBM_CarryWounded";
 
 		private _medic = player;
 
@@ -1800,10 +1802,10 @@ JBM_SetupActions =
 	private _action = 0;
 	private _actions = [];
 
-	_action = _player addAction ["<t color=""#ED2744"">Drag wounded</t>", { [cursorTarget] call JBM_DragWounded }, nil, 20, false, true, "", "[cursorTarget] call JBM_DragWoundedCondition"];
+	_action = _player addAction ["<t color=""#ED2744"">Drag wounded</t>", { [cursorObject] call JBM_DragWounded }, nil, 20, false, true, "", "[cursorObject] call JBM_DragWoundedCondition"];
 	_actions pushBack _action; // 0
 
-	_action = _player addAction ["<t color=""#ED2744"">Carry wounded</t>", { [cursorTarget] call JBM_CarryWounded }, nil, 20, false, true, "", "[cursorTarget] call JBM_CarryWoundedCondition"];
+	_action = _player addAction ["<t color=""#ED2744"">Carry wounded</t>", { [cursorObject] call JBM_CarryWounded }, nil, 20, false, true, "", "[cursorObject] call JBM_CarryWoundedCondition"];
 	_actions pushBack _action; // 1
 
 	_action = _player addAction ["<t color=""#ED2744"">Set down wounded</t>", { [] call JBM_SetDownWounded }, nil, 20, true, false, "", "[] call JBM_SetDownWoundedCondition"];
@@ -1813,14 +1815,14 @@ JBM_SetupActions =
 
 	if (_player getUnitTrait "medic") then
 	{
-		_action = _player addAction ["<t color=""#ED2744"">Revive wounded</t>", { [cursorTarget, _this select 2] call JBM_ReviveWoundedHoldAction }, nil, 20, true, true, "", "[cursorTarget] call JBM_ReviveWoundedCondition"];
+		_action = _player addAction ["<t color=""#ED2744"">Revive wounded</t>", { [cursorObject, _this select 2] call JBM_ReviveWoundedHoldAction }, nil, 20, true, true, "", "[cursorObject] call JBM_ReviveWoundedCondition"];
 		_actions pushBack _action; // 3
 
 		[_player, _action, "\a3\ui_f\data\IGUI\Cfg\HoldActions\holdAction_reviveMedic_ca.paa"] call JB_fnc_holdActionSetText;
 	}
 	else
 	{
-		_action = _player addAction ["<t color=""#ED2744"">Stabilize wounded</t>", { [cursorTarget, _this select 2] call JBM_StabilizeWoundedHoldAction }, nil, 20, true, true, "", "[cursorTarget] call JBM_StabilizeWoundedCondition"];
+		_action = _player addAction ["<t color=""#ED2744"">Stabilize wounded</t>", { [cursorObject, _this select 2] call JBM_StabilizeWoundedHoldAction }, nil, 20, true, true, "", "[cursorObject] call JBM_StabilizeWoundedCondition"];
 		_actions pushBack _action; // 4
 
 		[_player, _action, "\a3\ui_f\data\IGUI\Cfg\HoldActions\holdAction_reviveMedic_ca.paa"] call JB_fnc_holdActionSetText;

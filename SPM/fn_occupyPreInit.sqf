@@ -12,14 +12,22 @@ if (not isServer && hasInterface) exitWith {};
 
 #include "strongpoint.h"
 
-// Buildings occupy data: [[group-east,group-west,group-independent,group-civilian], [[soldier, position, index], [soldier, position, index], ...]]
-// Group occupy data: [building-occupying]
-
 //TODO: Restructure the building occupy data so that the groups (the first array) are associated with a generic key (e.g. infantry garrison category) instead of a side index.  That allows multiple garrisons of the same side to overlap use of a single building.
 
-#define UNCHAIN_ON_HEAR_WEAPON_PROBABILITY 1
-#define WEAPON_AUDIBLE_RANGE 20
-#define WEAPON_AUDIBLE_RANGE_SUPPRESSED 8
+// Building occupy data: [[group-east,group-west,group-independent,group-civilian], [[soldier, position, index], [soldier, position, index], ...]]
+// Group occupy data: [building-occupying]
+
+// AI have a certain chance of going active per shot heard, depending on these numbers.  Shots between MIN_DISTANCE and MAX_DISTANCE are considered (SUPPRESSED if suppressed weapon).  The distance is mapped to
+// a corresponding PROBABILITY which is then raised to a given POWER.  A POWER of 1 produces a linear interpolation between MIN and MAX probabilities, a POWER of 2 produces a squared interpolation, etc.
+
+//TODO: Currently variables so they can be tuned interactively.  Should be #defines
+UNCHAIN_MIN_DISTANCE = 2;
+UNCHAIN_MIN_PROBABILITY = 1.0;
+UNCHAIN_MAX_DISTANCE = 40;
+UNCHAIN_MAX_PROBABILITY = 0.1;
+UNCHAIN_POWER = 2.0;
+
+UNCHAIN_MAX_DISTANCE_SUPPRESSED = 8;
 
 OO_TRACE_DECL(SPM_Occupy_SideToNumber) =
 {
@@ -184,7 +192,7 @@ OO_TRACE_DECL(SPM_Occupy_FreeBuildingEntry) =
 OO_TRACE_DECL(SPM_Occupy_UnchainUnit) =
 {
 	params ["_unit"];
-	
+
 	_unit enableAI "path";
 
 	_unit removeEventHandler ["Hit", _unit getVariable ["SPM_Occupy_HitHandler", -1]];
@@ -193,7 +201,38 @@ OO_TRACE_DECL(SPM_Occupy_UnchainUnit) =
 	_unit setVariable ["SPM_Occupy_FiredNearHandler", nil];
 };
 
-SPM_Suppressors = [];
+OO_TRACE_DECL(SPM_Occupy_UncommandedExit) =
+{
+	params ["_unit"];
+
+	private _building = (_unit getVariable "SPM_Occupy_Data") select 0;
+
+	[_unit] call SPM_Occupy_UnchainUnit;
+	[_unit] call SPM_Occupy_LeaveBuildingGroup;
+	[_unit] call SPM_Occupy_FreeBuildingEntry;
+
+	if ([_unit, "SPM_Occupy_UncommandedExit"] call JB_fnc_eventExists) then { [_unit, "SPM_Occupy_UncommandedExit", [_building]] call JB_fnc_eventFire };
+};
+
+SPM_Occupy_ChainUnit_FiredNearHandler =
+{
+	params ["_unit", "", "_distance", "", "_weapon", "", "", "_gunner"];
+
+	if (_distance > UNCHAIN_MAX_DISTANCE) exitWith {};
+
+	if (side _gunner == side _unit) exitWith {};
+
+	if (_weapon == "Throw") exitWith {};
+
+	private _detectDistance = UNCHAIN_MAX_DISTANCE;
+	if (currentWeapon _gunner == _weapon && { _gunner weaponAccessories currentweapon _gunner select 0 != "" }) then { _detectDistance = UNCHAIN_MAX_DISTANCE_SUPPRESSED };
+
+	if (_distance > _detectDistance) exitWith {};
+
+	if (random 1 > linearConversion [UNCHAIN_MIN_DISTANCE, _detectDistance, _distance, UNCHAIN_MIN_PROBABILITY, UNCHAIN_MAX_PROBABILITY, true] ^ UNCHAIN_POWER) exitWith {};
+
+	[_unit] call SPM_Occupy_UncommandedExit
+};
 
 //NOTE: Don't do this before calling JoinBuildingGroup because it's possible for the unit to consider itself 'hit'
 // during this process, causing the unit to try to leave a building it hasn't joined.
@@ -203,39 +242,11 @@ OO_TRACE_DECL(SPM_Occupy_ChainUnit) =
 
 	_unit disableAI "path";
 
-	private _hitHandler = _unit addEventHandler ["Hit",
-		{
-			[_this select 0] call SPM_Occupy_UnchainUnit;
-			[_this select 0] call SPM_Occupy_LeaveBuildingGroup;
-			[_this select 0] call SPM_Occupy_FreeBuildingEntry;
-		}];
-
+	private _hitHandler = _unit addEventHandler ["Hit", SPM_Occupy_UncommandedExit];
 	_unit setVariable ["SPM_Occupy_HitHandler", _hitHandler];
 
-	if (random 1 < UNCHAIN_ON_HEAR_WEAPON_PROBABILITY) then
-	{
-		private _firedNearHandler = _unit addEventHandler ["FiredNear",
-			{
-				params ["_unit", "_vehicle", "_distance", "_muzzle", "_weapon", "_mode", "_ammo", "_gunner"];
-
-				if (side _gunner == side _unit) exitWith {};
-
-				private _detectDistance = WEAPON_AUDIBLE_RANGE;
-				if (currentWeapon _gunner == _weapon) then
-				{
-					private _suppressed = _gunner weaponAccessories currentweapon _gunner select 0 != "";
-					if (_suppressed) then { _detectDistance = WEAPON_AUDIBLE_RANGE_SUPPRESSED };
-				};
-
-				if (_distance < _detectDistance) then
-				{
-					[_unit] call SPM_Occupy_UnchainUnit;
-					[_unit] call SPM_Occupy_LeaveBuildingGroup;
-					[_unit] call SPM_Occupy_FreeBuildingEntry;
-				};
-			}];
-		_unit setVariable ["SPM_Occupy_FiredNearHandler", _firedNearHandler];
-	};
+	private _firedNearHandler = _unit addEventHandler ["FiredNear", SPM_Occupy_ChainUnit_FiredNearHandler];
+	_unit setVariable ["SPM_Occupy_FiredNearHandler", _firedNearHandler];
 };
 
 OO_TRACE_DECL(SPM_Occupy_JoinBuildingGroup) =
@@ -315,6 +326,10 @@ OO_TRACE_DECL(SPM_Occupy_CompleteOccupation) =
 	private _index = _buildingEntries findIf { _x select 0 == _unit };
 	private _destination = _buildingEntries select _index select 1;
 	if (_unit distance (getPos _building) < 1.0) then { _unit setPos _destination };
+
+	// This is to ensure that an object that is used to serve as an occupy point is visible once the first unit
+	// is garrisoned there.  Infantry garrisons use a campfire which the garrison code hides when created.
+	if (isObjectHidden _building) then { _building hideObjectGlobal false };
 
 	private _watchDirection = random 360;
 	private _watchDistance = 100;
@@ -445,7 +460,7 @@ OO_TRACE_DECL(SPM_Occupy_EnterBuilding) =
 			{
 				params ["_group", "_building"];
 
-				scriptName "spawnSPM_Occupy_EnterBuilding";
+				scriptName "SPM_Occupy_EnterBuilding";
 
 				{
 					[_x, _building] call SPM_Occupy_ApproachBuilding_Unit;

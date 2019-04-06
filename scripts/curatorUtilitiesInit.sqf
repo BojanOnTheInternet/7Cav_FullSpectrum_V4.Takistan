@@ -50,56 +50,67 @@ CuratorUtilities_KeyDownHandler =
 		{
 			case DIK_I:
 			{
-				_override = true;
-
-				[] call OP_Inspector_ShowDialog;
+				if (CLIENT_CuratorType in ["MC"]) then
+				{
+					_override = true;
+					[] call OP_Inspector_ShowDialog;
+				};
 			};
 
 			case DIK_F:
 			{
-				_override = true;
+				if (CLIENT_CuratorType in ["MC"]) then
+				{
+					_override = true;
 
-				if (["DisplayFrameRate"] call Diagnostics_StripChartExists) then
-				{
-					["DisplayFrameRate"] call Diagnostics_DeleteStripChart;
+					if (["DisplayFrameRate"] call Diagnostics_StripChartExists) then
+					{
+						["DisplayFrameRate"] call Diagnostics_DeleteStripChart;
+					}
+					else
+					{
+						disableSerialization;
+						private _display = ["DisplayFrameRate"] call Diagnostics_CreateStripChart;
+						[_display, "CLIENT FPS - %1", [1,1,1,1], 0.0, 80.0, 100, 0.2, Diagnostics_Sample_DisplayFrameRate] call Diagnostics_FeedStripChart;
+					};
 				}
-				else
-				{
-					disableSerialization;
-					private _display = ["DisplayFrameRate"] call Diagnostics_CreateStripChart;
-					[_display, "CLIENT FPS - %1", [1,1,1,1], 0.0, 80.0, 100, 0.2, Diagnostics_Sample_DisplayFrameRate] call Diagnostics_FeedStripChart;
-				};
 			};
 
 			case DIK_S:
 			{
-				_override = true;
+				if (CLIENT_CuratorType in ["MC"]) then
+				{
+					_override = true;
 
-				if (["ServerFrameRate"] call Diagnostics_StripChartExists) then
-				{
-					["ServerFrameRate"] call Diagnostics_DeleteStripChart;
-				}
-				else
-				{
-					disableSerialization;
-					private _display = ["ServerFrameRate"] call Diagnostics_CreateStripChart;
-					[_display, "SERVER FPS - %1", [1,1,0,1], 0.0, 55.0, 100, 0.2, Diagnostics_Sample_ServerFrameRate] call Diagnostics_FeedStripChart;
+					if (["ServerFrameRate"] call Diagnostics_StripChartExists) then
+					{
+						["ServerFrameRate"] call Diagnostics_DeleteStripChart;
+					}
+					else
+					{
+						disableSerialization;
+						private _display = ["ServerFrameRate"] call Diagnostics_CreateStripChart;
+						[_display, "SERVER FPS - %1", [1,1,0,1], 0.0, 55.0, 100, 0.2, Diagnostics_Sample_ServerFrameRate] call Diagnostics_FeedStripChart;
+					};
 				};
 			};
 
 			case DIK_P:
 			{
-				_override = true;
+				if (CLIENT_CuratorType in ["MC"]) then
+				{
+					_override = true;
 
-				if (["NumberPlayers"] call Diagnostics_StripChartExists) then
-				{
-					["NumberPlayers"] call Diagnostics_DeleteStripChart;
-				}
-				else
-				{
-					disableSerialization;
-					private _display = ["NumberPlayers"] call Diagnostics_CreateStripChart;
-					[_display, "PLAYERS - %1", [0,1,0,1], 0.0, 10.0, 100, 5.0, Diagnostics_Sample_NumberPlayers] call Diagnostics_FeedStripChart;
+					if (["NumberPlayers"] call Diagnostics_StripChartExists) then
+					{
+						["NumberPlayers"] call Diagnostics_DeleteStripChart;
+					}
+					else
+					{
+						disableSerialization;
+						private _display = ["NumberPlayers"] call Diagnostics_CreateStripChart;
+						[_display, "PLAYERS - %1", [0,1,0,1], 0.0, 10.0, 100, 5.0, Diagnostics_Sample_NumberPlayers] call Diagnostics_FeedStripChart;
+					};
 				};
 			};
 		};
@@ -111,12 +122,11 @@ CuratorUtilities_KeyDownHandler =
 	{
 		case DIK_C:
 		{
-			if (_isShift && _isControl) then
+			if (CLIENT_CuratorType in ["MC"]) then
 			{
-				_override = true;
-
-				if (CLIENT_CuratorType == "MC") then
+				if (_isShift && _isControl) then
 				{
+					_override = true;
 					[] call OP_Command_ShowDialog;
 				};
 			};
@@ -124,12 +134,11 @@ CuratorUtilities_KeyDownHandler =
 
 		case DIK_D:
 		{
-			if (_isShift && _isControl) then
+			if (CLIENT_CuratorType in ["MC"]) then
 			{
-				_override = true;
-
-				if (CLIENT_CuratorType == "MC") then
+				if (_isShift && _isControl) then
 				{
+					_override = true;
 					CuratorUtilities_WaitingForDiagnosticsKey = true;
 				};
 			};
@@ -137,11 +146,25 @@ CuratorUtilities_KeyDownHandler =
 
 		case DIK_L:
 		{
-			if (_isShift && _isControl) then
+			if (CLIENT_CuratorType in ["MC", "MP"]) then
 			{
-				_override = true;
+				if (_isShift && _isControl) then
+				{
+					_override = true;
+					[] call CuratorUtilities_Light;
+				};
+			};
+		};
 
-				[] call CuratorUtilities_Light;
+		case DIK_M:
+		{
+			if (CLIENT_CuratorType in ["MC"]) then
+			{
+				if (_isShift && _isControl) then
+				{
+					_override = true;
+					[] spawn JB_MP_ShowParameterEditor;
+				};
 			};
 		};
 	};

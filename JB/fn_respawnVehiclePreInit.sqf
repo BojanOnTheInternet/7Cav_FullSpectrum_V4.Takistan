@@ -139,7 +139,7 @@ JB_RV_RespawnVehicle =
 	{ _newVehicle removeWeaponGlobal getText (configFile >> "CfgMagazines" >> _x >> "pylonWeapon") } forEach getPylonMagazines _newVehicle;
 	{ _newVehicle setPylonLoadOut [_pylonPaths select _forEachIndex select 0, _x, true, _pylonPaths select _forEachIndex select 1] } forEach _vehiclePylonMagazines;
 
-	{ _newVehicle setObjectTexture [_forEachIndex, _x] } forEach _vehicleTextures;
+	{ _newVehicle setObjectTextureGlobal [_forEachIndex, _x] } forEach _vehicleTextures;
 
 	{ _newVehicle animate _x } forEach _animationSources;
 
@@ -202,7 +202,7 @@ JB_RV_Monitor =
 {
 	params ["_vehicle"];
 
-	scriptName format ["spawnJB_RV_Monitor %1", typeOf _vehicle];
+	scriptName format ["JB_RV_Monitor %1", typeOf _vehicle];
 
 	private _lastAbandoned = 0;
 	private _isAbandoned = false;
@@ -222,7 +222,7 @@ JB_RV_Monitor =
 
 			private _currentlyAbandoned = false;
 
-			if (_vehicle distance2d _startPosition >= _movedDistanceCondition) then
+			if (getPosASL _vehicle distance _startPosition >= _movedDistanceCondition) then
 			{
 				if ({ alive _x } count crew _vehicle == 0) then
 				{
@@ -231,7 +231,7 @@ JB_RV_Monitor =
 					// Considered abandoned if no one is nearby and moving below a certain speed (i.e. driving by above that speed does not mark the vehicle as no longer abandoned)
 					_currentlyAbandoned = true;
 					{
-						if ((_x distance2d _vehicle) <= _abandonDistanceCondition && vectorMagnitude (_vehicleVelocity vectorDiff (velocity _x)) < ABANDON_SPEED) exitWith { _currentlyAbandoned = false };
+						if ((getPosASL _x distance getPosASL _vehicle) <= _abandonDistanceCondition && vectorMagnitude (_vehicleVelocity vectorDiff (velocity _x)) < ABANDON_SPEED) exitWith { _currentlyAbandoned = false };
 					} forEach (allPlayers select { not (_x isKindOf "HeadlessClient_F") });
 				};
 			};

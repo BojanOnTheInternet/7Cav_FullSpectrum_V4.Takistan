@@ -16,7 +16,7 @@ if (not isServer && hasInterface) exitWith {};
 
 #define NEAR_ENGAGEMENT_RANGE 200
 
-// The distance from a building at which a group will split into individuals so they can occupy the building
+// The distance from a building at which a group will split into individuals so they can occupy the building (meters)
 #define OCCUPY_SPLIT_GROUP_DISTANCE 30
 
 #define TRANSPORT_OPERATION_AIR 0
@@ -31,6 +31,9 @@ if (not isServer && hasInterface) exitWith {};
 
 #define MAX_AIR_DROPS 2
 
+//TODO: The SPM_Occupy stuff decides if a unit should leave a building (distance to shot if loud, if suppressed, and the probability of leaving the building when heard).  That should be put on the units or the groups.
+SPM_InfantryGarrison_DefaultEBP = [50,4,50,2,0.5]; // ExitBuildingParameters
+
 SPM_InfantryGarrison_Formations = ["column", "stag column", "wedge", "ech left", "ech right", "vee", "line", "file", "diamond"];
 
 OO_TRACE_DECL(SPM_InfantryGarrison_SpawnGroup) =
@@ -42,10 +45,12 @@ OO_TRACE_DECL(SPM_InfantryGarrison_SpawnGroup) =
 		else { [_side, _descriptor, _positionInformation select 0, _positionInformation select 1, false] call SPM_fnc_spawnGroup };
 
 	[_category, _group] call OO_GET(_category,Category,InitializeObject);
-	_group setFormation (selectRandom SPM_InfantryGarrison_Formations);
+	_group setFormation "wedge"; // (selectRandom SPM_InfantryGarrison_Formations); //BUG: Are certain formations interfering with a group's ability to accept/follow waypoints?
 
 	private _forceUnits = OO_GET(_category,ForceCategory,ForceUnits);
 	{
+		[_x, "SPM_Occupy_UncommandedExit"] call JB_fnc_eventCreate;
+		[_x, "SPM_Occupy_UncommandedExit", SPM_InfantryGarrison_OnUncommandedExit, _category] call JB_fnc_eventAddHandler;
 		_forceUnits pushBack ([_x, [_x]] call OO_CREATE(ForceUnit));
 	} forEach units _group;
 
@@ -173,7 +178,8 @@ OO_TRACE_DECL(SPM_InfantryGarrison_AllocateCampsite) =
 		_positions set [_i, _position];
 	};
 
-	_campsite = ["Land_Campfire_F", _campsite, random 360, "can_collide"] call SPM_SpawnVehicle;
+	_campsite = ["Land_Campfire_F", _campsite, random 360, ["can_collide", "do_not_curate"]] call SPM_fnc_spawnVehicle;
+	_campsite hideObjectGlobal true; // SPM_Occupy will make it visible when the first unit arrives
 	if (call SERVER_IsNightOperation) then { _campsite inflame true };
 	[_campsite, _positions] call SPM_Occupy_SetBuildingData;
 	OO_GET(_category,InfantryGarrisonCategory,Campfires) pushBack _campsite;
@@ -342,6 +348,60 @@ OO_TRACE_DECL(SPM_InfantryGarrison_AllocateGarrisonBuilding) =
 	_building
 };
 
+OO_TRACE_DECL(SPM_InfantryGarrison_CompleteSearchDestroy) =
+{
+	params ["_category", "_group"];
+
+	[_group, "SPM_IG_OUE", nil] call TRACE_SetObjectString;
+	_group setVariable ["SPM_IG_OUE_SD", nil];
+	
+	[_category, _group, false, 0.0] call SPM_InfantryGarrison_GarrisonGroup;
+};
+
+// When a unit is forced from a building it will either try to join a search and destroy group or it will form its own
+OO_TRACE_DECL(SPM_InfantryGarrison_OnUncommandedExit) =
+{
+	params ["_unit", "_building", "_category"];
+
+	OO_GET(_category,InfantryGarrisonCategory,ExitBuildingParameters) params [["_coalesceDistance", SPM_InfantryGarrison_DefaultEBP select 0, [0]], ["_unitsPerGroup", SPM_InfantryGarrison_DefaultEBP select 1, [0]], ["_searchRadius", SPM_InfantryGarrison_DefaultEBP select 2, [0]], ["_buildingPositions", SPM_InfantryGarrison_DefaultEBP select 3, [0]], ["_enterBuilding", SPM_InfantryGarrison_DefaultEBP select 4, [0]]];
+
+	//TODO: This should only pick up units from the same garrison.  The side check really isn't enough.
+	// Locate existing search and destroy group leaders that have space for another man
+	private _leaders = (getpos _unit nearEntities [["Man"], _coalesceDistance]) select { side _x == side _unit && { _x == leader group _x } && { (group _x) getVariable ["SPM_IG_OUE_SD", false] } && { count units group _x < _unitsPerGroup } };
+
+	// If there are leaders, join the group of the closest one
+	if (count _leaders > 0) exitWith
+	{
+		_leaders = _leaders apply { [_unit distance _x, _x] };
+		_leaders sort true;
+		[_unit] join group (_leaders select 0 select 1);
+	};
+
+	// If no search and destroy leaders, turn the unit into its own search and destroy group
+	private _group = group _unit;
+	_group setSpeedMode "full";
+
+	_group setVariable ["SPM_IG_OUE_SD", true];
+	[_group, "SPM_IG_OUE", "S&D"] call TRACE_SetObjectString;
+
+	// Search 40% of buildings in the search radius that have the requisite number of building positions
+
+	private _fraction = 0.4;
+	private _buildings = ([getPos _building, 0, _searchRadius, _buildingPositions] call SPM_Util_HabitableBuildings) select { random 1 < _fraction };
+	if (count _buildings > 1) then
+	{
+		_buildings = _buildings apply { [_x, random 1 < _enterBuilding] };
+		private _task = [_group, _buildings] call SPM_fnc_patrolBuildings;
+		[_task, { params ["_task", "_category"]; [_category, [_task] call SPM_TaskGetObject] call SPM_InfantryGarrison_CompleteSearchDestroy }, _category] call SPM_TaskOnComplete;
+	}
+	else
+	{
+		private _waypoint = [_group, getPos leader _group] call SPM_AddPatrolWaypoint;
+		_waypoint setWaypointType "sad";
+		[_waypoint, { params ["_leader", "_units", "_category"]; [_category, group _leader] call SPM_InfantryGarrison_CompleteSearchDestroy }, _category] call SPM_AddPatrolWaypointStatements;
+	};
+};
+
 // Move to the nearest suitable building as a group.  Upon arrival, if that building is still suitable, occupy it.  If not suitable,
 // look for another and move to it as a group.  Repeat as needed.  If no suitable buildings are left, the group occupies an outdoor position.
 OO_TRACE_DECL(SPM_InfantryGarrison_GarrisonGroup) =
@@ -504,8 +564,8 @@ OO_TRACE_DECL(SPM_InfantryGarrison_CreateInitialForce) =
 	OO_SET(_category,InfantryGarrisonCategory,InitialForceCreated,true);
 };
 
-// Have the group advance aggressively until one of their number is killed by enemy fire or there is enemy gunfire heard within 10m
-SPM_InfantryGarrison_GroupAdvance =
+// Have the group advance aggressively until one of their number is killed by enemy fire or there is enemy gunfire heard within a certain distance
+OO_TRACE_DECL(SPM_InfantryGarrison_GroupAdvance) =
 {
 	params ["_group", ["_engageDistance", -1, [0]]];
 
@@ -518,8 +578,9 @@ SPM_InfantryGarrison_GroupAdvance =
 	{
 		_soldier = _x;
 
+//		{ _soldier disableAI _x } foreach ["checkvisible", "autocombat"];
 		{ _soldier disableAI _x } foreach ["cover", "suppression", "target", "autotarget", "autocombat"];
-		if (stance _soldier in ["crouch", "prone"]) then { _soldier setUnitPos "up" }; //TODO: We just want him to get up, not stay up forever
+		_soldier setUnitPos "up";
 
 		_killedHandler = _soldier addEventHandler ["Killed",
 			{
@@ -542,7 +603,7 @@ SPM_InfantryGarrison_GroupAdvance =
 		_soldier setVariable ["SPM_InfantryGarrison_GroupAdvance", [_killedHandler, _firedNearHandler, _engageDistance]];
 	} foreach units _group;
 
-	[leader _group, "GroupAdvance", "Advance"] call TRACE_SetObjectString;
+	[_group, "GroupAdvance", "Advance"] call TRACE_SetObjectString;
 };
 
 OO_TRACE_DECL(SPM_InfantryGarrison_GroupEngage) =
@@ -554,13 +615,17 @@ OO_TRACE_DECL(SPM_InfantryGarrison_GroupEngage) =
 
 	{
 		_soldier = _x;
+
+		_soldier setUnitPos "auto";
 		{ _soldier enableAI _x } foreach ["cover", "suppression", "target", "autotarget", "autocombat"];
+//		{ _soldier enableAI _x } foreach ["checkvisible", "autocombat"];
+
 		_handlers = _soldier getVariable ["SPM_InfantryGarrison_GroupAdvance", [-1,-1,-1]];
 		_soldier removeEventHandler ["Killed", _handlers select 0];
 		if ((_handlers select 1) != -1) then { _soldier removeEventHandler ["FiredNear", _handlers select 1] };
 	} foreach units _group;
 
-	[leader _group, "GroupAdvance", nil] call TRACE_SetObjectString;
+	[_group, "GroupAdvance", nil] call TRACE_SetObjectString;
 };
 
 OO_TRACE_DECL(SPM_InfantryGarrison_TransportOnLoad) =
@@ -723,16 +788,32 @@ OO_TRACE_DECL(SPM_InfantryGarrison_TransportOnArriveAir) =
 	{
 		params ["_category", "_aircraft"];
 
-		scriptName "spawnSPM_InfantryGarrison_TransportOnArriveAir";
+		scriptName "SPM_InfantryGarrison_TransportOnArriveAir";
 
 		private _units = (fullCrew [_aircraft, "cargo"]) select { alive (_x select 0) };
 		_units append ((fullCrew [_aircraft, "turret"]) select { alive (_x select 0) && (_x select 4) }); // Turrets that permit personal weapons
 		_units = _units apply { _x select 0 };
 
+		private _groups = []; { _groups pushBackUnique group _x } forEach (_units select { alive _x });
 		{
-			[_x, true] call JB_fnc_halo;
-			sleep 0.5;
-		} forEach _units;
+			_units = units _x;
+
+			// Move the leader to the center of the drop order so that his subordinates are physically close to him.  The leader dropping first or
+			// last seems to produce the most problems, especially when the jump interval is longer (was using 0.5s between units)
+			private _leader = leader _x;
+			if (alive _leader) then
+			{
+				_units = _units - [_leader];
+				private _middle = floor ((count _units) / 2);
+				_units = (_units select [0, _middle]) + [_leader] + (_units select [_middle, 1000]);
+			};
+
+			// Paradrop the units in the group
+			{
+				[_x, true] call JB_fnc_halo;
+				sleep 0.30;
+			} forEach _units;
+		} forEach _groups;
 
 		// Wait until all livng members of the group are out of parachutes.
 		waitUntil { sleep 0.5; ({ alive _x && { vehicle _x != _x } } count _units) == 0 };
@@ -945,7 +1026,7 @@ OO_TRACE_DECL(SPM_InfantryGarrison_Balance) =
 			private _airSpawnpoint = [[],0];
 			if (count OO_GET(_transport,TransportCategory,AirTransports) > 0 && OO_GET(_category,InfantryGarrisonCategory,TransportByAir) > 0) then
 			{
-				_airSpawnpoint = [OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), 1000, 100, _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetAirSpawnpoint;
+				_airSpawnpoint = [OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), 500, 100, _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetAirSpawnpoint;
 			};
 
 			private _weights = [0.0, 0.0, 0.0];
@@ -1255,7 +1336,11 @@ OO_TRACE_DECL(SPM_InfantryGarrison_Relocate) =
 			if (count _groupUnits > 0) then { _movingUnits pushBack (selectRandom _groupUnits) };
 			
 			private _group = [_category, _movingUnits] call SPM_InfantryGarrison_LeaveBuilding;
-			if (not isNull _group) then { [_category, _group, false, 0.1] call SPM_InfantryGarrison_GarrisonGroup }; // Stay local, but still allow long range moves
+			if (not isNull _group) then
+			{
+				_group setSpeedMode "limited";
+				[_category, _group, false, 0.1] call SPM_InfantryGarrison_GarrisonGroup; // Stay local, but still allow long range moves
+			};
 		};
 	};
 };
@@ -1430,8 +1515,9 @@ OO_BEGIN_SUBCLASS(InfantryGarrisonCategory,ForceCategory);
 	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,InitialForceCreated,"BOOL",false);
 	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,ActivityBorder,"BOOL",0); // A buffer distance at which the infantry arrives, is discounted if it departs, etc.
 	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,OccupationLimits,"ARRAY",_defaultOccupationLimits); // Per building, the minimum and maximum number of troops to house
-	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,RelocateProbability,"SCALAR",0.001); // Per second, the odds that a garrison soldier will relocate (CODE also allowed)
+	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,RelocateProbability,"SCALAR",0.0003); // Per second, the odds that a garrison soldier will relocate (CODE also allowed)
 	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,HouseOutdoors,"BOOL",true);
+	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,ExitBuildingParameters,"ARRAY",SPM_InfantryGarrison_DefaultEBP); // [coalesce-distance, units-per-group, building-search-radius, building-minimum-positions, building-enter-probability]
 	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,Transport,"#OBJ",OO_NULL);
 	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,TransportBySea,"SCALAR",0.8); // The defaults produce 0.8 probability of sea, 0.2*0.5=0.1 probability of ground and 0.2*0.5*1.0=0.1 probability of air, assuming that all three types of transport are available and practical
 	OO_DEFINE_PROPERTY(InfantryGarrisonCategory,TransportByGround,"SCALAR",0.5); // If sea transport is not practical, then it's 0.5 probability of ground and 0.5*1.0=0.5 probability of air

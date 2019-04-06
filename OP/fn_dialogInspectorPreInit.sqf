@@ -33,7 +33,7 @@ OO_TRACE_DECL(OP_Inspector_ShowDialog) =
 
 	[] spawn
 	{
-		scriptName "spawnOP_Inspector_ShowDialog";
+		scriptName "OP_Inspector_ShowDialog";
 
 		while { dialog } do
 		{

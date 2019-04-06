@@ -49,16 +49,6 @@ TaruPod_AnimateDoors =
 	_vehicle animateDoor ["door_6_source", _value];
 };
 
-Params_GetParamValue =
-{
-	params ["_name"];
-
-	private _override = format ["PARAMS_%1_Override", _name];
-	if (isNil _override) exitWith { [_name] call BIS_fnc_getParamValue };
-
-	 missionNamespace getVariable _override;
-};
-
 BOTH_IsSpecOpsMember =
 {
 	params ["_player"];

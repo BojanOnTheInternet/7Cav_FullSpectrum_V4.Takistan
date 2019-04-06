@@ -92,6 +92,7 @@ OO_TRACE_DECL(SPM_MissionDisruptMeeting_Create) =
 	OO_SET(_category,ForceCategory,RatingsWest,SPM_InfantryGarrison_RatingsWest);
 	OO_SET(_category,ForceCategory,RatingsEast,SPM_InfantryGarrison_RatingsSyndikat);
 	OO_SET(_category,ForceCategory,CallupsEast,SPM_InfantryGarrison_CallupsSyndikat);
+	OO_SET(_category,ForceCategory,SkillLevel,0.35);
 	OO_SET(_category,InfantryGarrisonCategory,InitialCallupsEast,SPM_InfantryGarrison_InitialCallupsSyndikat);
 	OO_SET(_category,InfantryGarrisonCategory,HousingPreference,0.0);
 
@@ -139,6 +140,7 @@ OO_TRACE_DECL(SPM_MissionDisruptMeeting_Create) =
 	if (random 1 < 0.5) then
 	{
 		OO_SET(_category,ForceCategory,SideEast,independent);
+		OO_SET(_category,ForceCategory,SkillLevel,0.35);
 		OO_SET(_category,ForceCategory,RatingsEast,SPM_InfantryGarrison_RatingsSyndikat);
 		OO_SET(_category,ForceCategory,CallupsEast,SPM_InfantryGarrison_CallupsSyndikat);
 		OO_SET(_category,InfantryGarrisonCategory,InitialCallupsEast,SPM_InfantryGarrison_InitialCallupsSyndikat);

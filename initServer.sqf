@@ -5,8 +5,7 @@ diag_log "initServer start";
 addMissionEventHandler ["PlayerConnected", SERVER_PlayerConnected];
 addMissionEventHandler ["PlayerDisconnected", SERVER_PlayerDisconnected];
 
-
-//_null = [] execVM "scripts\sessionTimeMessagesInit.sqf";
+_null = [] execVM "scripts\sessionTimeMessagesInit.sqf";
 
 // Make sure armed civilians won't attack NATO
 civilian setFriend [west, 1];
@@ -33,18 +32,6 @@ _date set [4, _startMinute];
 
 setDate _date;
 
-//  Disable rain always and forever and ever
-[] spawn {
-	while ({ true }) do
-    {
-				if(rain > 0) then {
-	        0 setRain 0;
-	        forceWeatherChange;
-				};
-				sleep 10;
-     };
-};
-
 // Markers of format LOCATION_<type>_<id> are turned into locations of the specified type and marker text.  The id is optional and is used to make the marker names unique.  The markers will be hidden.
 private _location = 0;
 {
@@ -59,29 +46,26 @@ private _location = 0;
 [] call compile preprocessFile ("scripts\configure" + worldName + "Server.sqf"); // Island-specific modifications
 [] call compile preprocessFile "scripts\weatherInit.sqf"; // Variable weather
 
-Advance_RunState = ["stop", "run"] select (["Advance"] call Params_GetParamValue);
-_null = [] execVM "mission\Advance\missionControl.sqf";
+[] execVM "mission\Advance\missionControl.sqf";
 
-SpecialOperations_RunState = ["stop", "run"] select (["SpecialOperations"] call Params_GetParamValue);
-_null = [] execVM "mission\SpecialOperations\missionControl.sqf";
+SpecialOperations_RunState = ["stop", "run"] select (["SpecialOperations"] call JB_MP_GetParamValue);
+[] execVM "mission\SpecialOperations\missionControl.sqf";
 
 // Delete missions when appropriate
-_null = [] execVM "mission\missionMonitor.sqf";
+[] execVM "mission\missionMonitor.sqf";
 
 // Stuff involving players entering enemy-held areas
 [] call SERVER_MonitorProximityRoundRequests;
 
 ["Initialize"] call BIS_fnc_dynamicGroups;
 
-SA_MAX_TOWED_CARGO = 1;
-_null = [] execVM "ASL_AdvancedSlingLoading\functions\fn_advancedSlingLoadInit.sqf";
-_null = [] execVM "AR_AdvancedRappelling\functions\fn_advancedRappellingInit.sqf";
-_null = [] execVM "AT_AdvancedTowing\functions\fn_advancedTowingInit.sqf";
-_null = [] execVM "AUR_AdvancedUrbanRappelling\functions\fn_advancedUrbanRappellingInit.sqf";
+[] execVM "ASL_AdvancedSlingLoading\functions\fn_advancedSlingLoadInit.sqf";
+[] execVM "AR_AdvancedRappelling\functions\fn_advancedRappellingInit.sqf";
+[] execVM "AT_AdvancedTowing\functions\fn_advancedTowingInit.sqf";
+[] execVM "AUR_AdvancedUrbanRappelling\functions\fn_advancedUrbanRappellingInit.sqf";
 
-_null = [] execVM "scripts\decals.sqf";
-
-_null = [] execVM "scripts\fortifyInit.sqf";
+[] execVM "scripts\decals.sqf";
+[] execVM "scripts\fortifyInit.sqf";
 
 enableEnvironment [false, true];
 

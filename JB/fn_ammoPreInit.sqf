@@ -260,7 +260,7 @@ OO_TRACE_DECL(JBA_MonitorAmmoSources) =
 {
 	_this spawn
 	{
-		scriptName "spawnJBA_MonitorAmmoSources";
+		scriptName "JBA_MonitorAmmoSources";
 
 		params ["_unit"];
 
@@ -359,6 +359,8 @@ OO_TRACE_DECL(JBA_ShowAmmoList) =
 
 	(findDisplay 46) createDisplay "JBA_Transfer";
 	waitUntil { not isNull (findDisplay TRANSFER_DISPLAY) };
+
+	call CLIENT_DisableScrollMenu;
 
 	[_unit] call JBA_SetFromUnit;
 	[objNull] call JBA_SetToUnit;
@@ -649,6 +651,8 @@ OO_TRACE_DECL(JBA_TransferUnload) =
 
 	// The transfer may have not involved the player's ammo box and we want to delete it if it's empty
 	[[] call JBA_PlayerAmmoBox] call JBA_DeleteEmptyAmmoBox;
+
+	call CLIENT_EnableScrollMenu;
 };
 
 OO_TRACE_DECL(JBA_TransferDoneAction) =

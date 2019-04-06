@@ -259,7 +259,7 @@ OO_TRACE_DECL(SPM_StartWaypointMonitor) =
 	{
 		params ["_group"];
 
-		scriptName "spawnSPM_StartWaypointMonitor";
+		scriptName "SPM_StartWaypointMonitor";
 
 		private _lastLeaderPosition = getPosATL leader _group;
 
@@ -272,14 +272,11 @@ OO_TRACE_DECL(SPM_StartWaypointMonitor) =
 		while { { alive _x } count units _group > 0 } do
 		{
 			private _stop = _group getVariable ["SPM_StopWaypointMonitor", false];
-			if (_stop) exitWith
-			{
-				_group setVariable ["SPM_StopWaypointMonitor", nil];
-			};
+			if (_stop) exitWith { _group setVariable ["SPM_StopWaypointMonitor", nil] };
 
 			private _leader = leader _group;
 
-			if (alive _leader && { vehicle _leader == _leader } && { behaviour _leader in ["CARELESS", "SAFE"] } && { not captive _leader }) then
+			if (alive _leader && { vehicle _leader == _leader } && { behaviour _leader in ["CARELESS", "SAFE", "AWARE"] } && { not captive _leader }) then
 			{
 				private _leaderPosition = getPosATL _leader;
 
@@ -420,45 +417,51 @@ OO_TRACE_DECL(SPM_GoToNextBuilding) =
 
 	_patrolPosition = _patrolPositions deleteAt 0;
 	
-	_waypoint = [_group,  _patrolPosition select 1] call SPM_AddPatrolWaypoint;
+	_waypoint = [_group, _patrolPosition select 1] call SPM_AddPatrolWaypoint;
 	_waypoint setWaypointType "move";
+	if (_patrolPosition select 3 >= 0) then
+	{
+		_waypoint setWaypointHousePosition (_patrolPosition select 3);
+		_waypoint waypointAttachObject (_patrolPosition select 2);
+	};
 	[_waypoint, SPM_GoToNextBuilding, _task] call SPM_AddPatrolWaypointStatements;
 };
 
 OO_TRACE_DECL(SPM_PatrolBuildings) =
 {
-	params ["_group", "_position", "_radius", "_visit", "_enter"];
+	params ["_group", "_buildings"]; // buildings: [[building-to-visit, should-enter], ...]
 
 	private _task = [_group] call SPM_TaskCreate;
 
-	private _buildings = nearestObjects [_position, ["HouseBase"], _radius];
+	private _index = 0;
+	private _building = objNull;
+	private _enter = false;
 
-	private _patrolPositions = [];
+	private _patrolPositions = []; // [distance, position, building, buildingpos-index]
+
 	for "_i" from (count _buildings - 1) to 0 step -1 do
 	{
-		if (random 1 < _visit) then
+		_building = _buildings select _i select 0;
+		_enter = _buildings select _i select 1;
+
+		private _enteredBuilding = false;
+		if (_enter && { not ([_building] call SPM_Occupy_BuildingIsOccupied) }) then
 		{
-			private _building = _buildings select _i;
-
-			private _enteredBuilding = false;
-			if (random 1 < _enter && { not ([_building] call SPM_Occupy_BuildingIsOccupied) }) then
+			private _positions = _building buildingPos -1;
+			if (count _positions > 0) then
 			{
-				private _positions = [_building] call BIS_fnc_buildingPositions;
-				if (count _positions > 0) then
-				{
-					_enteredBuilding = true;
-					_buildingPosition = _positions select (floor random (count _positions));
-					_patrolPositions pushBack [0, _buildingPosition];
-				};
+				_enteredBuilding = true;
+				_index = floor random count _positions;
+				_patrolPositions pushBack [0, _positions select _index, _building, _index];
 			};
+		};
 
-			if (not _enteredBuilding) then
+		if (not _enteredBuilding) then
+		{
+			private _exits = [_building] call SPM_Occupy_GetBuildingExits;
+			if (count _exits > 0) then
 			{
-				private _exits = [_building] call SPM_Occupy_GetBuildingExits;
-				if (count _exits > 0) then
-				{
-					_patrolPositions pushBack [0, selectRandom _exits];
-				};
+				_patrolPositions pushBack [0, selectRandom _exits, _building, -1];
 			};
 		};
 	};

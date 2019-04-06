@@ -168,6 +168,13 @@ SPM_InfantryGarrison_InitialCallupsEast =
 	[(configfile >> "CfgGroups" >> "East" >> "LOP_US" >> "Infantry" >> "LOP_US_FT_section"), [1, 2, 1.0]]
 ];
 
+SPM_InfantryGarrison_InitialCallupsEastAA =
+[
+	[(configfile >> "CfgGroups" >> "East" >> "LOP_US" >> "Infantry" >> "LOP_US_Patrol_section"), [1, 4, 1.0]],
+	[(configfile >> "CfgGroups" >> "East" >> "LOP_US" >> "Infantry" >> "LOP_US_AA_section"), [1, 4, 0.10]],
+	[(configfile >> "CfgGroups" >> "East" >> "LOP_US" >> "Infantry" >> "LOP_US_FT_section"), [1, 2, 1.0]]
+];
+
 SPM_InfantryGarrison_RatingsEastWater =
 [
 	["O_diver_TL_F", [1, 1]],

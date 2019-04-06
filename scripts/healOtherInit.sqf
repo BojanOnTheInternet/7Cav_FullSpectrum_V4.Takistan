@@ -43,11 +43,12 @@ HealOther_ShouldContinue =
 
 	if (vehicle _wounded != _wounded) exitWith { false };
 
-	if ({ _x > 0.25 } count (getAllHitPointsDamage _wounded select 2) == 0) exitWith { false };
-
 	if (not (lifeState player in ["HEALTHY", "INJURED"])) exitWith { false };
 
 	if (player distance _wounded > 3) exitWith { false };
+
+	private _injuryLevel = if (player getUnitTrait "medic") then { 0.0 } else { 0.25 };
+	if ({ _x > _injuryLevel } count (getAllHitPointsDamage player select 2) == 0) exitWith { false };
 
 	true
 };

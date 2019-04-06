@@ -70,7 +70,7 @@ OO_TRACE_DECL(SPM_SatelliteCommunicationCenter_CreateSatellitePhone) =
 	{
 		params ["_category", "_phone", "_indoor"];
 
-		scriptName "spawnSPM_SatelliteCommunicationCenter_CreateSatellitePhone";
+		scriptName "SPM_SatelliteCommunicationCenter_CreateSatellitePhone";
 
 		// Run comms chatter
 		[_phone, _indoor] remoteExec ["SPM_CommunicationCenter_CommunicationChatter", 0, true];//JIP
@@ -115,7 +115,7 @@ OO_TRACE_DECL(SPM_SatelliteCommunicationCenter_CreateSatelliteAntenna) =
 {
 	params ["_category", "_position", "_direction", "_simulationEnabled"];
 
-	private _antenna = ["Land_SatelliteAntenna_01_F", _position, _direction, "can_collide"] call SPM_fnc_spawnVehicle;
+	private _antenna = ["Land_SatelliteAntenna_01_F", _position, _direction, ["can_collide", "do_not_curate"]] call SPM_fnc_spawnVehicle;
 	_antenna enableSimulation _simulationEnabled;
 
 	OO_GET(_category,SatelliteCommunicationCenterCategory,_CenterObjects) append [_antenna];
@@ -146,7 +146,7 @@ OO_TRACE_DECL(SPM_SatelliteCommunicationCenter_CreateCamoflagedVehicle) =
 	_truck setRepairCargo 0; // Prevent players from repairing on the enemy vehicle
 	[_category, _truck] call OO_GET(_category,Category,InitializeObject);
 
-	private _camoNet = [_camoNetType, _position, _direction, "can_collide"] call SPM_fnc_spawnVehicle;
+	private _camoNet = [_camoNetType, _position, _direction, ["can_collide", "do_not_curate"]] call SPM_fnc_spawnVehicle;
 
 	OO_GET(_category,SatelliteCommunicationCenterCategory,_CenterObjects) append [_camoNet, _truck];
 

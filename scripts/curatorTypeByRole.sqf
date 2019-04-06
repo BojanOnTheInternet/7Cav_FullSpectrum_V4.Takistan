@@ -1,11 +1,10 @@
 params ["_roleDescription"];
 
-_roleDescription = toLower _roleDescription;
+_roleDescription = [toLower _roleDescription] call SPM_Util_CleanedRoleDescription;
 
 private _roleMissionControllers =
 [
-	"mission controller*",
-	"cbrn*"
+	"mission controller*"
 ];
 
 if (_roleMissionControllers findIf { [_roleDescription, _x] call JB_fnc_regexMatch } >= 0) exitWith { "MC" };

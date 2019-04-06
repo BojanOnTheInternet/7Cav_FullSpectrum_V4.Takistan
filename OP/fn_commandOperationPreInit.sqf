@@ -34,7 +34,7 @@ OP_KnownOperations = [];
 
 [] spawn
 {
-	scriptName "spawnOP_UpdateKnownOperations";
+	scriptName "OP_UpdateKnownOperations";
 
 	while { sleep 2; true } do
 	{
@@ -85,7 +85,7 @@ OO_TRACE_DECL(OP_COMMAND__OperationStart) =
 			{
 				params ["_mission"];
 				
-				scriptName "spawnOP_COMMAND__OperationStart";
+				scriptName "OP_COMMAND__OperationStart";
 				
 				call OO_METHOD(_mission,Strongpoint,Run);
 
@@ -192,22 +192,31 @@ OO_TRACE_DECL(OP_COMMAND__OperationRename) =
 	private _name = _commandWords select 0;
 
 	private _selection = call OP_GetCallerSelection;
-
 	if (OO_ISNULL(_selection select 0)) then
 	{
 		["No operation is selected."] call SPM_Util_MessageCaller;
 	}
 	else
 	{
-		private _mission = OO_INSTANCE(_selection select 0);
+		private _nameInUse = false;
+		OO_FOREACHINSTANCE(Mission,[],{ if (OO_GET(_x,Strongpoint,Name) == _name) then { _nameInUse = true; true } else { false } });
 
-		OO_SET(_mission,Strongpoint,Name,_name);
+		if (_nameInUse) then
+		{
+			[format ["An operation named '%1' already exists", _name]] call SPM_Util_MessageCaller;
+		}
+		else
+		{
+			private _mission = OO_INSTANCE(_selection select 0);
 
-		[format ["Operation renamed to '%1'", _name]] call SPM_Util_MessageCaller;
+			OO_SET(_mission,Strongpoint,Name,_name);
 
-		_selection = +_selection;
-		_selection set [3, _name];
-		[_selection] remoteExec ["OP_C_SetSelection", remoteExecutedOwner];
+			[format ["Operation renamed to '%1'", _name]] call SPM_Util_MessageCaller;
+
+			_selection = +_selection;
+			_selection set [3, _name];
+			[_selection] remoteExec ["OP_C_SetSelection", remoteExecutedOwner];
+		};
 	};
 
 	[OP_COMMAND_RESULT_MATCHED]
@@ -230,10 +239,7 @@ OO_TRACE_DECL(OP_GetMission) =
 
 	private _message = format ["Creating operation on %1.", if (isServer) then { "server" } else { vehicleVarName player }];
 	[_message] call SPM_Util_MessageCaller;
-	private _mission = [_center, _radius, _radius] call OO_CREATE(Mission);
-
-	private _buildings = [_center, 0, _radius, 2] call SPM_Util_HabitableBuildings;
-	OO_SET(_mission,Mission,Buildings,_buildings);
+	private _mission = [_center, _radius, _radius, 2] call OO_CREATE(Mission);
 
 	OP_OperationNumber = OP_OperationNumber + 1;
 	private _name = format ["%1 Operation %2", if (isServer) then { "Server" } else { vehicleVarName player }, OP_OperationNumber];
@@ -263,6 +269,7 @@ OO_TRACE_DECL(SPM_Command_OperationSetGarrisonSide) =
 		case "csat":
 		{
 			OO_SET(_garrison,ForceCategory,SideEast,east);
+			OO_SET(_garrison,ForceCategory,SkillLevel,0.5);
 			OO_SET(_garrison,InfantryGarrisonCategory,HouseOutdoors,true);
 
 			OO_SET(_garrison,ForceCategory,RatingsEast,SPM_InfantryGarrison_RatingsEast);
@@ -283,6 +290,7 @@ OO_TRACE_DECL(SPM_Command_OperationSetGarrisonSide) =
 		case "syndikat":
 		{
 			OO_SET(_garrison,ForceCategory,SideEast,independent);
+			OO_SET(_garrison,ForceCategory,SkillLevel,0.35);
 			OO_SET(_garrison,InfantryGarrisonCategory,HouseOutdoors,true);
 
 			OO_SET(_garrison,ForceCategory,RatingsEast,SPM_InfantryGarrison_RatingsSyndikat);
@@ -348,6 +356,60 @@ OO_TRACE_DECL(OP_COMMAND__OperationCreateGarrison) =
 	[OP_COMMAND_RESULT_MATCHED]
 };
 
+OP_COMMAND__OperationCreateCheckpoints_Usage =
+[
+	"create checkpoints name",
+	[
+		["-garrison", true, true, "STRING"],
+		["-area", false, true, "#RANGE", [0,100]]
+	]
+];
+
+OO_TRACE_DECL(OP_COMMAND__OperationCreateCheckpoints) =
+{
+	params ["_commandWords"];
+
+	private _name = _commandWords select 0;
+
+	if (_name find "-" == 0) exitWith { [format ["Usage: %1", [OP_COMMAND__OperationCreateCheckpoints_Usage] call OP_COMMAND_UsageDescription]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+
+	private _parameters = [_commandWords, OP_COMMAND__OperationCreateCheckpoints_Usage] call OP_COMMAND_ParseParameters;
+	if ({ _x select 0 == -1 } count _parameters > 0) exitWith { [OP_COMMAND_RESULT_MATCHED] };
+	if ({ _x select 0 >= 0 } count _parameters == 0) exitWith { [format ["Usage: %1", [OP_COMMAND__OperationCreateCheckpoints_Usage] call OP_COMMAND_UsageDescription]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+
+	private _mission = call OP_GetMission;
+
+	if (OO_ISNULL(_mission)) exitWith { [OP_COMMAND_RESULT_MATCHED] };
+
+	private _categories = OO_GET(_mission,Strongpoint,Categories) select { (["Name"] call OO_METHOD(_x,Category,GetTagValue)) find _name != -1 } select { OO_INSTANCE_ISOFCLASS(_x,CheckpointsCategory) };
+	if (count _categories > 0) exitWith { [format ["The operation already contains a checkpoints called '%1'", _name]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+
+	private _areaParameter = [_parameters, "-area"] call OP_COMMAND_GetParsedParameter;
+	private _garrisonParameter = [_parameters, "-garrison"] call OP_COMMAND_GetParsedParameter;
+
+	private _categories = OO_GET(_mission,Strongpoint,Categories) select { (["Name"] call OO_METHOD(_x,Category,GetTagValue)) find (_garrisonParameter select 2) != -1 } select { OO_INSTANCE_ISOFCLASS(_x,InfantryGarrisonCategory) };
+	if (count _categories == 0) exitWith { [format ["The operation does not contain a garrison called '%1'", (_garrisonParameter select 2)]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+
+	private _garrison = _categories select 0;
+
+	private _areaValues = (_areaParameter select 2) apply { _x / 100 }; // Convert to percentages
+
+	private _center = OO_GET(_mission,Strongpoint,Position);
+	private _radius = OO_GET(_mission,Strongpoint,ActivityRadius);
+	private _innerRadius = (_areaValues select 0) * _radius;
+	private _outerRadius = (_areaValues select 1) * _radius;
+
+	private _area = [_center, _innerRadius, _outerRadius] call OO_CREATE(StrongpointArea);
+	_checkpoints = [_area, _garrison, 1e30] call OO_CREATE(CheckpointsCategory);
+	["Name", _name] call OO_METHOD(_checkpoints,Category,SetTagValue);
+
+	[_checkpoints] call OO_METHOD(_mission,Strongpoint,AddCategory);
+
+	[format ["Checkpoints '%1' added to operation", _name]] call SPM_Util_MessageCaller;
+
+	[OP_COMMAND_RESULT_MATCHED]
+};
+
 OP_COMMAND__OperationCreateArmor_Usage =
 [
 	"create armor name",
@@ -387,7 +449,7 @@ OO_TRACE_DECL(OP_COMMAND__OperationCreateArmor) =
 	private _area = [_center, _innerRadius, _outerRadius] call OO_CREATE(StrongpointArea);
 	_armor = [_area] call OO_CREATE(ArmorCategory);
 	["Name", _name] call OO_METHOD(_armor,Category,SetTagValue);
-	OO_SET(_armor,ForceCategory,RatingsWest,SPM_Armor_RatingsWestAPCs+SPM_Armor_RatingsWestTanks);
+	OO_SET(_armor,ForceCategory,RatingsWest,[]);
 
 	OO_SET(_armor,ForceCategory,Reserves,0);
 	OO_SET(_armor,ArmorCategory,PatrolType,"area");
@@ -964,7 +1026,6 @@ OO_TRACE_DECL(OP_COMMAND__OperationCreateCaptive) =
 	private _category = [_guardableObject, _garrison, 4] call OO_CREATE(GuardObjectCategory);
 	[_category] call OO_METHOD(_mission,Strongpoint,AddCategory);
 
-
 	[format ["Captive '%1' added to operation", _name]] call SPM_Util_MessageCaller;
 
 	[OP_COMMAND_RESULT_MATCHED]
@@ -1061,7 +1122,8 @@ OO_TRACE_DECL(OP_COMMAND__OperationCreate) =
 		["patrol", OP_COMMAND__OperationCreatePatrol],
 		["cars", OP_COMMAND__OperationCreateCars],
 		["satellite", OP_COMMAND__OperationCreateSatellite],
-		["radio", OP_COMMAND__OperationCreateRadio]
+		["radio", OP_COMMAND__OperationCreateRadio],
+		["checkpoints", OP_COMMAND__OperationCreateCheckpoints]
 	];
 
 	private _match = [_commandWords select 0, _commands] call OP_COMMAND_Match;
@@ -1442,7 +1504,7 @@ OO_TRACE_DECL(OP_COMMAND__OperationAddArmor) =
 			case "apcs": { _callups = SPM_Armor_CallupsEastAPCs };
 			case "tanks": { _callups = SPM_Armor_CallupsEastTanks };
 			case "helicopters": { _callups = SPM_Armor_CallupsEastAir };
-			case "airdefense": { _callups = [["O_APC_Tracked_02_AA_F", SPM_AirDefense_CallupsEast] call BIS_fnc_getFromPairs] };
+			case "airdefense": { _callups = SPM_Armor_CallupsEastAirDefense };
 		};
 		OO_GET(_armor,ForceCategory,CallupsEast) append _callups;
 
@@ -1825,6 +1887,57 @@ OO_TRACE_DECL(OP_COMMAND__OperationSetGarrison) =
 		OO_SET(_garrison,InfantryGarrisonCategory,RelocateProbability,_relocate);
 	};
 
+	[OP_COMMAND_RESULT_MATCHED]
+};
+
+OP_COMMAND__OperationSetCheckpoints_Usage =
+[
+	"set checkpoints name",
+	[
+		["-coverage", false, true, "#DIRECTION"]
+	]
+];
+
+OO_TRACE_DECL(OP_COMMAND__OperationSetCheckpoints) =
+{
+	params ["_commandWords"];
+
+	private _name = _commandWords select 0;
+
+	if (_name find "-" == 0) exitWith { [format ["Usage: %1", [OP_COMMAND__OperationSetCheckpoints_Usage] call OP_COMMAND_UsageDescription]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+
+	private _parameters = [_commandWords, OP_COMMAND__OperationSetCheckpoints_Usage] call OP_COMMAND_ParseParameters;
+	if ({ _x select 0 == -1 } count _parameters > 0) exitWith { [OP_COMMAND_RESULT_MATCHED] };
+	if ({ _x select 0 >= 0 } count _parameters == 0) exitWith { [format ["Usage: %1", [OP_COMMAND__OperationSetCheckpoints_Usage] call OP_COMMAND_UsageDescription]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+
+	private _mission = call OP_GetMission;
+
+	if (OO_ISNULL(_mission)) exitWith { [OP_COMMAND_RESULT_MATCHED] };
+
+	private _categories = OO_GET(_mission,Strongpoint,Categories) select { (["Name"] call OO_METHOD(_x,Category,GetTagValue)) find _name != -1 } select { OO_INSTANCE_ISOFCLASS(_x,CheckpointsCategory) };
+	if (count _categories == 0) exitWith { [format ["The operation does not contain a checkpoints called '%1'", _name]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+	if (count _categories > 1) exitWith { [format ["'%1' is an ambiguous checkpoints name", _name]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
+
+	private _checkpoints = _categories select 0;
+
+	private _coverageParameter = [_parameters, "-coverage"] call OP_COMMAND_GetParsedParameter;
+
+	if (_coverageParameter select 0 == 0) then
+	{
+		private _coverage = _coverageParameter select 2;
+
+		private _direction = _coverage select 0;
+		private _sweep = _coverage select 1;
+
+		if (_direction isEqualType []) then
+		{
+			private _area = OO_GET(_checkpoints,ForceCategory,Area);
+			_direction = OO_GET(_area,StrongpointArea,Position) getDir _direction;
+		};
+
+		private _coverageDirection = [_direction, _sweep];
+		OO_SET(_checkpoints,CheckpointsCategory,Coverage,_coverageDirection);
+	};
 
 	[OP_COMMAND_RESULT_MATCHED]
 };
@@ -1908,7 +2021,8 @@ OP_COMMAND__OperationSetArmor_Usage =
 		["-side", false, true, "STRING", nil, SPM_Command_OperationSides],
 		["-update", false, true, "#RANGE"],
 		["-retire", false, true, "STRING", nil, ["true", "false"]],
-		["-approach", false, true, "#DIRECTION"]
+		["-approach", false, true, "#DIRECTION"],
+		["-preplaced", false, true, "STRING", nil, ["true", "false"]]
 	]
 ];
 
@@ -1945,6 +2059,8 @@ OO_TRACE_DECL(OP_COMMAND__OperationSetArmor) =
 	private _sideParameter = [_parameters, "-side"] call OP_COMMAND_GetParsedParameter;
 	private _updateParameter = [_parameters, "-update"] call OP_COMMAND_GetParsedParameter;
 	private _retireParameter = [_parameters, "-retire"] call OP_COMMAND_GetParsedParameter;
+	private _approachParameter = [_parameters, "-approach"] call OP_COMMAND_GetParsedParameter;
+	private _preplacedParameter = [_parameters, "-preplaced"] call OP_COMMAND_GetParsedParameter;
 
 	private _ratingsWest = OO_GET(_armor,ForceCategory,RatingsWest);
 	private _totalRatingWest = 0; { _totalRatingWest = _totalRatingWest + (_x select 1 select 0) * (_x select 1 select 1) } forEach _ratingsWest;
@@ -2017,6 +2133,29 @@ OO_TRACE_DECL(OP_COMMAND__OperationSetArmor) =
 		OO_SET(_armor,ForceCategory,UnitsCanRetire,_retire);
 	};
 
+	if (_approachParameter select 0 == 0) then
+	{
+		private _approach = _approachParameter select 2;
+
+		private _direction = _approach select 0;
+		private _sweep = _approach select 1;
+
+		if (_direction isEqualType []) then
+		{
+			private _area = OO_GET(_armor,ForceCategory,Area);
+			_direction = OO_GET(_area,StrongpointArea,Position) getDir _direction;
+		};
+
+		private _approachDirection = [_direction, _sweep];
+		OO_SET(_armor,ForceCategory,CallupDirection,_approachDirection);
+	};
+
+	if (_preplacedParameter select 0 == 0) then
+	{
+		private _preplaced = (_preplacedParameter select 2) == "true";
+		OO_SET(_armor,ArmorCategory,UsePreplacedEquipment,_preplaced);
+	};
+
 	[OP_COMMAND_RESULT_MATCHED]
 };
 
@@ -2076,6 +2215,7 @@ OO_TRACE_DECL(OP_COMMAND__OperationSet) =
 	private _commands =
 	[
 		["garrison", OP_COMMAND__OperationSetGarrison],
+		["checkpoints", OP_COMMAND__OperationSetCheckpoints],
 		["cars", OP_COMMAND__OperationSetCars],
 		["armor", OP_COMMAND__OperationSetArmor],
 		["mortar", OP_COMMAND__OperationSetMortar]
@@ -2282,16 +2422,13 @@ OO_TRACE_DECL(OP_COMMAND__OperationSelect) =
 	if (_nameParameter select 0 == 0) then
 	{
 		private _name = _nameParameter select 2;
-
 		private _missions = [];
-		private _parameters = [_name, _missions];
 		private _code =
 			{
-				params ["_name", "_missions"];
 				if (OO_GET(_x,Strongpoint,Name) find _name >= 0) then { _missions pushBack _x };
 				false
 			};
-		OO_FOREACHINSTANCE(Mission,_parameters,_code);
+		OO_FOREACHINSTANCE(Mission,[],_code);
 
 		if (count _missions == 0) exitWith { [format ["There is no operation called '%1'", _name]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };
 		if (count _missions > 1) exitWith { [format ["'%1' is an ambiguous operation name", _name]] call SPM_Util_MessageCaller; [OP_COMMAND_RESULT_MATCHED] };

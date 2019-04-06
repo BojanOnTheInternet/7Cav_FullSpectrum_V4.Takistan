@@ -72,6 +72,7 @@ OO_TRACE_DECL(SPM_GuardObject_Update) =
 	OO_SET(_category,GuardObjectCategory,_Guards,units _group);
 
 	// Quick and dirty version of "building occupy" at spots around the objective
+	//TODO: Allow the occupy stuff to work with a completely-manufactured concept of a building with building positions (like we do with campfires)
 
 	private _strongpoint = OO_GETREF(_category,Category,Strongpoint);
 	private _guardGroup = grpNull; // The group that all of the guards will join when they arrive

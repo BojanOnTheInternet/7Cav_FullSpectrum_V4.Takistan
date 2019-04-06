@@ -31,7 +31,7 @@ OO_TRACE_DECL(SPM_Mission_Message) =
 	};
 };
 
-OO_TRACE_DECL(SPM_Mission_SpecOpsMembers) =
+SPM_Mission_SpecOpsMembers =
 {
 	allPlayers select { [_x] call BOTH_IsSpecOpsMember }
 };

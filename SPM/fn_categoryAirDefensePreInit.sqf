@@ -24,7 +24,7 @@ OO_TRACE_DECL(SPM_AirDefense_Reload) =
 			{
 				params ["_vehicle", "_magazineType", "_reloadDelay"];
 
-				scriptName "spawnSPM_AirDefense_Reload";
+				scriptName "SPM_AirDefense_Reload";
 
 				sleep _reloadDelay;
 

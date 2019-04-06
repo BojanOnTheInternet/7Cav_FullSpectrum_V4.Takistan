@@ -15,6 +15,7 @@ OO_TRACE_DECL(SPM_AmmoCaches_Killed) =
 	_this spawn
 	{
 		sleep (0.2 + random 0.3);
+		{ deleteVehicle _x } forEach (attachedObjects (_this select 0));
 		[_this select 0, false] call JB_fnc_detonateObject
 	};
 };
@@ -157,9 +158,14 @@ OO_TRACE_DECL(SPM_AmmoCaches_CreateContainers) =
 				[_container, _containerDamage, _containerHasMissiles] call JB_fnc_detonateSetDamage;
 				_container allowDamage false;
 
-				diag_log _index;
+				if (OO_GET(_category,AmmoCachesCategory,ContainersDetectable)) then
+				{
+					private _charge = "DemoCharge_Remote_Ammo" createVehicle (call SPM_Util_RandomSpawnPosition);
+					_charge attachTo [_container, [0,0,-0.2]];
+					_charge allowDamage false;
+				};
+
 				[_category, _container] call OO_GET(_category,Category,InitializeObject);
-				diag_log _index;
 				[_container, 0.5, 1.0] call JB_fnc_damagePulseInitObject;
 
 				[[_container], { (_this select 0) addEventHandler ["Killed", SPM_AmmoCaches_Killed] }] remoteExec ["call", 0, true]; // JIP
@@ -227,9 +233,10 @@ OO_BEGIN_SUBCLASS(AmmoCachesCategory,Category);
 	OO_OVERRIDE_METHOD(AmmoCachesCategory,Root,Create,SPM_AmmoCaches_Create);
 	OO_OVERRIDE_METHOD(AmmoCachesCategory,Root,Delete,SPM_AmmoCaches_Delete);
 	OO_OVERRIDE_METHOD(AmmoCachesCategory,Category,Update,SPM_AmmoCaches_Update);
+	OO_DEFINE_PROPERTY(AmmoCachesCategory,ContainersDetectable,"BOOL",true);
 	OO_DEFINE_PROPERTY(AmmoCachesCategory,_Garrison,"#OBJ",OO_NULL); // The garrison used to pick cache locations
 	OO_DEFINE_PROPERTY(AmmoCachesCategory,_NumberCaches,"SCALAR",4);
-	OO_DEFINE_PROPERTY(AmmoCachesCategory,_ContainersPerCache,"ARRAY",_defaultContainersPerCache); // Minimum, maximum
+	OO_DEFINE_PROPERTY(AmmoCachesCategory,_ContainersPerCache,"ARRAY",_defaultContainersPerCache); // [minimum, maximum]
 	OO_DEFINE_PROPERTY(AmmoCachesCategory,_ContainerTypes,"ARRAY",[]); // [[container-type, damage, has-missiles], ...], or just container-type
 	OO_DEFINE_PROPERTY(AmmoCachesCategory,_Caches,"ARRAY",[]); // [invisible-soldier, [container, container, ...]]
 OO_END_SUBCLASS(AmmoCachesCategory);

@@ -248,31 +248,32 @@ OO_TRACE_DECL(JB_IS_S_PushObject) =
 
 	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionEnter;
 
-	if ((_data select JB_IS_S_CONTAINER_ALLOCATEDVOLUME) + _objectVolume > _data select JB_IS_S_CONTAINER_TOTALVOLUME) exitWith { false };
-
-	_data set [JB_IS_S_CONTAINER_ALLOCATEDVOLUME, (_data select JB_IS_S_CONTAINER_ALLOCATEDVOLUME) + _objectVolume];
-
-	if (_object isEqualType []) then // Direct push of a collapsable object
-	{
-		(_data select JB_IS_S_CONTAINER_CONTENTS) pushBack _object; // [type-name, object-init, simple-object]
-	}
-	else
-	{
-		_object enableSimulationGlobal false;
-		_object hideObjectGlobal true;
-
-		private _objectInit = _object getVariable "JB_IS_S_OBJECT_INIT";
-		if (not isNil "_objectInit") then // Collapsable object
+		if ((_data select JB_IS_S_CONTAINER_ALLOCATEDVOLUME) + _objectVolume <= _data select JB_IS_S_CONTAINER_TOTALVOLUME) then
 		{
-			(_data select JB_IS_S_CONTAINER_CONTENTS) pushBack [typeOf _object, _objectInit, isSimpleObject _object];
-			deleteVehicle _object;
-		}
-		else
-		{
-			(_data select JB_IS_S_CONTAINER_CONTENTS) pushBack _object;
-			_object setpos [-10000 + random 10000, -10000 + random 10000, random 10000];
+			_data set [JB_IS_S_CONTAINER_ALLOCATEDVOLUME, (_data select JB_IS_S_CONTAINER_ALLOCATEDVOLUME) + _objectVolume];
+
+			if (_object isEqualType []) then // Direct push of a collapsible object
+			{
+				(_data select JB_IS_S_CONTAINER_CONTENTS) pushBack _object; // [type-name, object-init, simple-object]
+			}
+			else
+			{
+				_object enableSimulationGlobal false;
+				_object hideObjectGlobal true;
+
+				private _objectInit = _object getVariable "JB_IS_S_OBJECT_INIT";
+				if (not isNil "_objectInit") then // Collapsible object
+				{
+					(_data select JB_IS_S_CONTAINER_CONTENTS) pushBack [typeOf _object, _objectInit, isSimpleObject _object];
+					deleteVehicle _object;
+				}
+				else
+				{
+					(_data select JB_IS_S_CONTAINER_CONTENTS) pushBack _object;
+					_object setpos [-10000 + random 10000, -10000 + random 10000, random 10000];
+				};
+			};
 		};
-	};
 
 	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionLeave;
 };
@@ -284,54 +285,57 @@ OO_TRACE_DECL(JB_IS_S_PopObject) =
 	private _data = _container getVariable "JB_IS_ServerData";
 	if (isNil "_data") exitWith { diag_log "JB_IS_S_PopObject called on non-container" };
 
+	private _object = nil;
+
 	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionEnter;
 
-	private _contents = _data select JB_IS_S_CONTAINER_CONTENTS;
+		private _contents = _data select JB_IS_S_CONTAINER_CONTENTS;
 
-	if (count _contents > 0) then
-	{
-		private _object = _contents deleteAt (count _contents - 1);
-		private _objectVolume = [_object] call JB_IS_ObjectVolume;
-
-		if (_object isEqualType []) then // Collapsible object
+		if (count _contents > 0) then
 		{
-			private _createdObject = objNull;
+			_object = _contents deleteAt (count _contents - 1);
 
-			if (_object select 2) then
-			{
-				ATLtoASL (_position findEmptyPosition [0, 20, _object select 0]); // Find a clear spot
-				_createdObject = createSimpleObject [_object select 0, ATLtoASL _position];
-			}
-			else
-			{
-				_createdObject = (_object select 0) createVehicle _position; // Will naturally find a clear spot
-			};
+			_data set [JB_IS_S_CONTAINER_ALLOCATEDVOLUME, (_data select JB_IS_S_CONTAINER_ALLOCATEDVOLUME) - ([_object] call JB_IS_ObjectVolume)];
+		};
 
-			_createdObject setVariable ["JB_IS_S_OBJECT_INIT", _object select 1];
+	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionLeave;
 
-			[_createdObject] call (_object select 1); // reinitialize object
+	if (isNil "_object") exitWith {};
 
-			if (not simulationEnabled _createdObject) then
-			{
-				_createdObject setPos [_position select 0, _position select 1, 0];
-				_createdObject setVectorUp (surfaceNormal getPos _createdObject);
-			};
+	if (_object isEqualType []) then // Collapsible object
+	{
+		private _createdObject = objNull;
 
-			[_createdObject] remoteExec ["JB_IS_C_PickUpObject", remoteExecutedOwner];
+		if (_object select 2) then
+		{
+			ATLtoASL (_position findEmptyPosition [0, 20, _object select 0]); // Find a clear spot
+			_createdObject = createSimpleObject [_object select 0, ATLtoASL _position];
 		}
 		else
 		{
-			_object setPos (_position findEmptyPosition [0, 20, typeOf _object]); // Move it to a clear spot
-			_object enableSimulationGlobal true;
-			_object hideObjectGlobal false;
-
-			[_object] remoteExec ["JB_IS_C_PickUpObject", remoteExecutedOwner];
+			_createdObject = (_object select 0) createVehicle _position; // Will naturally find a clear spot
 		};
 
-		_data set [JB_IS_S_CONTAINER_ALLOCATEDVOLUME, (_data select JB_IS_S_CONTAINER_ALLOCATEDVOLUME) - _objectVolume];
-	};
+		_createdObject setVariable ["JB_IS_S_OBJECT_INIT", _object select 1];
 
-	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionLeave;
+		[_createdObject] call (_object select 1); // reinitialize object
+
+		if (not simulationEnabled _createdObject) then
+		{
+			_createdObject setPos [_position select 0, _position select 1, 0];
+			_createdObject setVectorUp (surfaceNormal getPos _createdObject);
+		};
+
+		[_createdObject] remoteExec ["JB_IS_C_PickUpObject", remoteExecutedOwner];
+	}
+	else // Normal object that we've spirited away off-map
+	{
+		_object setPos (_position findEmptyPosition [0, 20, typeOf _object]); // Move it to a clear spot
+		_object enableSimulationGlobal true;
+		_object hideObjectGlobal false;
+
+		[_object] remoteExec ["JB_IS_C_PickUpObject", remoteExecutedOwner];
+	};
 };
 
 OO_TRACE_DECL(JB_IS_S_DeleteAllObjects) =
@@ -343,23 +347,23 @@ OO_TRACE_DECL(JB_IS_S_DeleteAllObjects) =
 
 	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionEnter;
 
-	private _contents = _data select JB_IS_S_CONTAINER_CONTENTS;
+		private _contents = _data select JB_IS_S_CONTAINER_CONTENTS;
 
-	while { count _contents > 0 } do
-	{
-		private _object = _contents deleteAt 0;
+		while { count _contents > 0 } do
+		{
+			private _object = _contents deleteAt 0;
 
-		if (_object isEqualType []) then
-		{
-			// Do nothing because no object exists
-		}
-		else
-		{
-			deleteVehicle _object;
+			if (_object isEqualType []) then
+			{
+				// Do nothing because no object exists
+			}
+			else
+			{
+				deleteVehicle _object;
+			};
 		};
-	};
 
-	_data set [JB_IS_S_CONTAINER_ALLOCATEDVOLUME, 0];
+		_data set [JB_IS_S_CONTAINER_ALLOCATEDVOLUME, 0];
 
 	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionLeave;
 };
@@ -373,24 +377,24 @@ OO_TRACE_DECL(JB_IS_S_DestroyAllObjects) =
 
 	(_data select JB_IS_S_CONTAINER_CS) call JB_fnc_criticalSectionEnter;
 
-	private _contents = _data select JB_IS_S_CONTAINER_CONTENTS;
+		private _contents = _data select JB_IS_S_CONTAINER_CONTENTS;
 
-	while { count _contents > 0 } do
-	{
-		private _object = _contents deleteAt 0;
+		while { count _contents > 0 } do
+		{
+			private _object = _contents deleteAt 0;
 
-		if (_object isEqualType []) then
-		{
-			// Do nothing because no object exists
-		}
-		else
-		{
-			// Bring the object to the container and destroy it.  Keep it hidden.
-			_object enableSimulationGlobal true;
-			_object setPos (getPos _container);
-			_object setDamage 1;
+			if (_object isEqualType []) then
+			{
+				// Do nothing because no object exists
+			}
+			else
+			{
+				// Bring the object to the container and destroy it.  Keep it hidden.
+				_object enableSimulationGlobal true;
+				_object setPos (getPos _container);
+				_object setDamage 1;
+			};
 		};
-	};
 
 	_data set [JB_IS_S_CONTAINER_ALLOCATEDVOLUME, 0];
 

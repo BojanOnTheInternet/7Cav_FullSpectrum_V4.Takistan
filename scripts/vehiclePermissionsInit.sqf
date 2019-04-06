@@ -1,3 +1,42 @@
+VP_CheckPermissions =
+{
+	params ["_type", "_target", "_caller"];
+
+	private _permissions = _caller getVariable [_type, []];
+	private _applicable = _permissions select { [typeOf _target, _x select 0] call JB_fnc_passesTypeFilter };
+	private _permitted = [];
+	private _allMessages = [];
+
+	// The vehicle type wasn't mentioned in any permissions, so show a generic refusal message to the player.
+	if (count _applicable == 0) then
+	{
+		private _targetName = [typeOf _target, "CfgVehicles"] call JB_fnc_displayName;
+
+		switch (_type) do
+		{
+			case "VP_Driver": { _allMessages pushBack format ["You may not drive this %1", _targetName] };
+			case "VP_Gunner": { _allMessages pushBack format ["You may not operate weapons on this %1", _targetName] };
+			case "VP_Commander": { _allMessages pushBack format ["You may not command this %1", _targetName] };
+			case "VP_Pilot": { _allMessages pushBack format ["You may not fly this %1", _targetName] };
+			case "VP_Turret": { _allMessages pushBack format ["You may not operate weapons on this %1", _targetName] };
+			case "VP_Cargo": { _allMessages pushBack format ["You may not ride in this %1", _targetName] };
+		};
+		
+		[_permitted, _allMessages]
+	}
+	else
+	{
+		private _messages = [];
+		{
+			_messages = (_x select 1) apply { [_target, _caller, _type] call _x };
+			if ({ _x != "" } count _messages == 0) then { _permitted pushBack _x };
+			_allMessages append (_messages select { _x != "" });
+		} forEach _applicable;
+	};
+
+	[_permitted, _allMessages]
+};
+
 VP_GetIn_Action =
 {
 	params ["_type", "_target", "_caller", "_index", "_name", "_text"];
@@ -7,35 +46,8 @@ VP_GetIn_Action =
 	// be a remote act.
 	if (CLIENT_CuratorType == "MC" && { player distance _target > sizeOf typeOf _target }) exitWith { false };
 
-	private _permissions = _caller getVariable [_type, []];
-	private _applicable = _permissions select { [typeOf _target, _x select 0] call JB_fnc_passesTypeFilter };
-
-	// The vehicle type wasn't mentioned in any permissions, so show a generic refusal message to the player.
-	if (count _applicable == 0) exitWith
-	{
-		private _targetName = [typeOf _target, "CfgVehicles"] call JB_fnc_displayName;
-
-		switch (_type) do
-		{
-			case "VP_Driver": { [format ["You may not drive this %1", _targetName], 1] call JB_fnc_showBlackScreenMessage };
-			case "VP_Gunner": { [format ["You may not operate weapons on this %1", _targetName], 1] call JB_fnc_showBlackScreenMessage };
-			case "VP_Commander": { [format ["You may not command this %1", _targetName], 1] call JB_fnc_showBlackScreenMessage };
-			case "VP_Pilot": { [format ["You may not fly this %1", _targetName], 1] call JB_fnc_showBlackScreenMessage };
-			case "VP_Turret": { [format ["You may not operate weapons on this %1", _targetName], 1] call JB_fnc_showBlackScreenMessage };
-			case "VP_Cargo": { [format ["You may not ride in this %1", _targetName], 1] call JB_fnc_showBlackScreenMessage };
-		};
-		
-		true
-	};
-
-	private _permitted = [];
-	private _allMessages = [];
-	private _messages = [];
-	{
-		_messages = (_x select 1) apply { [_target, _caller, _type] call _x };
-		if ({ _x != "" } count _messages == 0) then { _permitted pushBack _x };
-		_allMessages append (_messages select { _x != "" });
-	} forEach _applicable;
+	private _results = [_type, _target, _caller] call VP_CheckPermissions;
+	_results params ["_permitted", "_allMessages"];
 
 	if (count _permitted == 0) exitWith
 	{

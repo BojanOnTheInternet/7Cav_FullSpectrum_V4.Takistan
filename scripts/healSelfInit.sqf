@@ -39,7 +39,8 @@ HealSelf_Completed =
 
 HealSelf_ShouldContinue =
 {
-	if ({ _x > 0.25 } count (getAllHitPointsDamage player select 2) == 0) exitWith { false };
+	private _injuryLevel = if (player getUnitTrait "medic") then { 0.0 } else { 0.25 };
+	if ({ _x > _injuryLevel } count (getAllHitPointsDamage player select 2) == 0) exitWith { false };
 
 	true
 };

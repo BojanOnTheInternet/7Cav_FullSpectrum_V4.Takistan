@@ -31,7 +31,7 @@ OO_TRACE_DECL(Advance_GetGridSites) =
 {
 	private _sites = [];
 
-	private _gridSpacing = ["AdvanceGridSiteSpacing"] call Params_GetParamValue;
+	private _gridSpacing = ["AdvanceGridSiteSpacing"] call JB_MP_GetParamValue;
 
 	for "_x" from 0 to worldSize / _gridSpacing do
 	{
@@ -255,7 +255,7 @@ OO_TRACE_DECL(Advance_RunMission) =
 		{
 			params ["_mission"];
 
-			scriptName "spawnRunMission";
+			scriptName "RunMission";
 
 			[] call OO_METHOD(_mission,Strongpoint,Run);
 		};
@@ -285,7 +285,7 @@ OO_TRACE_DECL(Advance_ControlRadius) =
 {
 	params ["_numberUnits"];
 
-	private _areaPerUnit = ["AdvanceAreaPerUnit"] call Params_GetParamValue; // m^2
+	private _areaPerUnit = ["AdvanceAreaPerUnit"] call JB_MP_GetParamValue; // m^2
 	private _controlRadius = sqrt ((_numberUnits * _areaPerUnit) / pi);
 	_controlRadius = _controlRadius max 50;
 
@@ -299,15 +299,11 @@ OO_TRACE_DECL(Advance_ExecuteOperation) =
 	params ["_siteName", "_sitePosition", "_siteImportance"];
 
 	private _numberPlayers = call SPM_Util_NumberPlayers;
-	private _garrisonCount = ((_numberPlayers * (["NumberInfantryPerPlayer"] call Params_GetParamValue)) max (["MinimumInfantryPerOperation"] call Params_GetParamValue)) min (["MaximumInfantryPerOperation"] call Params_GetParamValue);
+	private _garrisonCount = ((_numberPlayers * (["NumberInfantryPerPlayer"] call JB_MP_GetParamValue)) max (["MinimumInfantryPerOperation"] call JB_MP_GetParamValue)) min (["MaximumInfantryPerOperation"] call JB_MP_GetParamValue);
 	private _controlRadius = [_garrisonCount] call Advance_ControlRadius;
 
-	if (SPM_Util_OperationImportanceOverride != -1) then { _siteImportance = SPM_Util_OperationImportanceOverride };
-	if (_siteImportance == -1) then
-	{
-		_siteImportance = [_sitePosition, _controlRadius] call Advance_GetSiteImportance;
-		_siteImportance = _siteImportance min SITE_IMPORTANCE_LIMIT;
-	};
+	_siteImportance = [_sitePosition, _controlRadius] call Advance_GetSiteImportance;
+	_siteImportance = _siteImportance min SITE_IMPORTANCE_LIMIT;
 
 	// Possibly enlarge the radius if minimal cover
 	private _cover = (count nearestTerrainObjects [_sitePosition, ["tree", "rock"], _controlRadius, false, true]) * 1.0 + (count (_sitePosition nearObjects ["House", _controlRadius])) * 5.0;
@@ -345,13 +341,13 @@ OO_TRACE_DECL(Advance_ExecuteOperation) =
 	[_mission] call Advance_RunMission;
 
 	// If the mission system is stopped, we're out
-	if (Advance_RunState != "run") exitWith {};
+	if ((["Advance"] call JB_MP_GetParamValueText) != "Started") exitWith {};
 
 	// If the mission wasn't a success, no counterattack
 	if (OO_GET(_mission,Mission,MissionState) != "completed-success") exitWith {};
 
 	// If the enemy doesn't want to counterattack, no counterattack
-	if (random 100 > ((["CounterattackProbability"] call Params_GetParamValue) * _siteImportance)) exitWith {};
+	if (random 100 > ((["CounterattackProbability"] call JB_MP_GetParamValue) * _siteImportance)) exitWith {};
 #endif
 
 	// Counterattack
@@ -367,7 +363,7 @@ OO_TRACE_DECL(Advance_ExecuteOperation) =
 	if (count OO_GET(_mission,Mission,Objectives) == 0) exitWith { call OO_DELETE(_mission) };
 
 	// Delay before the counterattack, making sure to skip it if the advance is stopped during the delay
-	if (not ([{ Advance_RunState != "run" }, DELAY_BEFORE_COUNTERATTACK] call JB_fnc_timeoutWaitUntil)) then { [_mission] call Advance_RunMission };
+	if (not ([{ (["Advance"] call JB_MP_GetParamValueText) != "Started" }, DELAY_BEFORE_COUNTERATTACK] call JB_fnc_timeoutWaitUntil)) then { [_mission] call Advance_RunMission };
 };
 
 OO_TRACE_DECL(Advance_CreateAirOperations) =
@@ -453,7 +449,7 @@ OO_TRACE_DECL(Advance_ExecuteOperationalAdvance) =
 	private _maxSpacingIdeal = 0.0;
 	private _minRange = 0.0;
 	private _maxRange = 0.0;
-	private _deviationAngle = ["AdvanceDeviationAngle"] call Params_GetParamValue;
+	private _deviationAngle = ["AdvanceDeviationAngle"] call JB_MP_GetParamValue;
 	
 	private _blacklist = [];
 
@@ -477,11 +473,11 @@ OO_TRACE_DECL(Advance_ExecuteOperationalAdvance) =
 	private _markerColors = ["ColorRed", "ColorBlack", "ColorGreen", "ColorBrown", "ColorYellow"];
 #endif
 
-	while { Advance_RunState in ["run", "suspend"] && count _site > 0 } do
+	while { (["Advance"] call JB_MP_GetParamValueText) in ["Started", "Suspended"] && count _site > 0 } do
 	{
-		switch (Advance_RunState) do
+		switch (["Advance"] call JB_MP_GetParamValueText) do
 		{
-			case "run":
+			case "Started":
 			{
 				_site params ["_siteName", "_sitePosition", "_siteImportance"];
 #ifdef TEST_SHOW_ALGORITHM
@@ -496,13 +492,13 @@ OO_TRACE_DECL(Advance_ExecuteOperationalAdvance) =
 #endif
 				_completedSites pushBack _site;
 
-				if ([{ Advance_RunState != "run" }, _sleepBeforeOperation] call JB_fnc_timeoutWaitUntil) exitWith {};
+				if ([{ (["Advance"] call JB_MP_GetParamValueText) != "Started" }, _sleepBeforeOperation] call JB_fnc_timeoutWaitUntil) exitWith {};
 
-				_playerSpacingPad = (["AdvanceSpacingPerPlayer"] call Params_GetParamValue) * (call SPM_Util_NumberPlayers);
-				_minSpacing = (["AdvanceSpacingMin"] call Params_GetParamValue) + _playerSpacingPad;
-				_maxSpacing = (["AdvanceSpacingMax"] call Params_GetParamValue) + _playerSpacingPad;
-				_minSpacingIdeal = (["AdvanceSpacingMinIdeal"] call Params_GetParamValue) + _playerSpacingPad;
-				_maxSpacingIdeal = (["AdvanceSpacingMaxIdeal"] call Params_GetParamValue) + _playerSpacingPad;
+				_playerSpacingPad = (["AdvanceSpacingPerPlayer"] call JB_MP_GetParamValue) * (call SPM_Util_NumberPlayers);
+				_minSpacing = (["AdvanceSpacingMin"] call JB_MP_GetParamValue) + _playerSpacingPad;
+				_maxSpacing = (["AdvanceSpacingMax"] call JB_MP_GetParamValue) + _playerSpacingPad;
+				_minSpacingIdeal = (["AdvanceSpacingMinIdeal"] call JB_MP_GetParamValue) + _playerSpacingPad;
+				_maxSpacingIdeal = (["AdvanceSpacingMaxIdeal"] call JB_MP_GetParamValue) + _playerSpacingPad;
 #ifdef TEST_SHOW_ALGORITHM
 				private _markerName = format ["ADV_MINI_%1", _siteName];
 				createMarker [_markerName, _sitePosition];
@@ -591,7 +587,7 @@ OO_TRACE_DECL(Advance_ExecuteOperationalAdvance) =
 				// [weight, site-index]
 
 				// Select all of the highest-weighted sites
-				_neighbors = _neighbors select { _x select 0 > (_neighbors select 0 select 0) * 0.95 };
+				_neighbors = _neighbors select { _x select 0 > (_neighbors select 0 select 0) * 0.60 };
 
 				_siteIndex = (selectRandom _neighbors) select 1;
 				_direction = (_site select 1) getDir (_sites select _siteIndex select 1);
@@ -603,7 +599,7 @@ OO_TRACE_DECL(Advance_ExecuteOperationalAdvance) =
 #endif
 			};
 
-			case "suspend":
+			case "Suspended":
 			{
 				[_airOperations] call Advance_DeleteAirOperations;
 				_sleepBeforeOperation = 0;
@@ -666,7 +662,7 @@ Advance_CompletedSites = [];
 addMissionEventHandler ["PlayerConnected", Advance_PlayerConnected];
 
 MissionEndWarningGiven = false;
-MissionEndTime = serverTime + 21600;
+MissionEndTime = serverTime + 14400;
 
 [] spawn {
 	while {true} do {
@@ -680,11 +676,11 @@ MissionEndTime = serverTime + 21600;
 
 while { true } do
 {
-	while { Advance_RunState in ["stop", "suspend"] } do
+	while { (["Advance"] call JB_MP_GetParamValueText) in ["Stopped", "Suspended"] } do
 	{
 		sleep 1;
 
-		//if (Advance_RunState == "stop") then { Advance_AvailableSites = [] };
+		//if ((["Advance"] call JB_MP_GetParamValueText) == "Stopped") then { Advance_AvailableSites = [] };
 	};
 
 	if (count Advance_AvailableSites == 0) exitWith {};
@@ -693,8 +689,8 @@ while { true } do
 
 	private _advance = [] spawn
 	{
-		scriptName "spawnExecuteOperationalAdvance";
-
+		scriptName "ExecuteOperationalAdvance";
+		
 		[Advance_AvailableSites, Advance_CompletedSites] call Advance_ExecuteOperationalAdvance;
 	};
 
@@ -702,14 +698,14 @@ while { true } do
 
 	// Notify everyone that the advance is over
 	private _sleep = 0;
-	if (Advance_RunState == "run" && count Advance_CompletedSites > 2) then
+	if ((["Advance"] call JB_MP_GetParamValueText) == "Started" && count Advance_CompletedSites > 2) then
 	{
 		["NotificationEndAdvance", ["This operational advance is complete."]] remoteExec ["BIS_fnc_showNotification", 0];
 		_sleep = DELAY_BETWEEN_OPERATIONAL_ADVANCES;
 	};
 
 	// Sleep between advances
-	[{ Advance_RunState != "run" }, _sleep] call JB_fnc_timeoutWaitUntil;
+	[{ (["Advance"] call JB_MP_GetParamValueText) != "Started" }, _sleep] call JB_fnc_timeoutWaitUntil;
 };
 
 ["end1", true] remoteExec ["BIS_fnc_endMission"];

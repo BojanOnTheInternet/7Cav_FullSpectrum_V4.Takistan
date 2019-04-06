@@ -4,7 +4,7 @@ JBMAP_InstallDisplayControlDrawHandler =
 	{
 		params ["_displays", "_displayNumber", "_controlNumber", "_handler", "_monitor"];
 
-		scriptName "spawnJBMAP_InstallDisplayControlDrawHandler";
+		scriptName "JBMAP_InstallDisplayControlDrawHandler";
 
 		disableSerialization;
 
@@ -40,7 +40,7 @@ JBMAP_InitializeOverlay =
 	{
 		params ["_mapDraw", "_gpsDraw"];
 
-		scriptName "spawnInstallMapDrawHandlers";
+		scriptName "InstallMapDrawHandlers";
 
 		[{ allDisplays }, 12, 51, _mapDraw, false] call JBMAP_InstallDisplayControlDrawHandler; // Main map
 		[{ allDisplays }, 160, 51, _mapDraw, true] call JBMAP_InstallDisplayControlDrawHandler; // UAV

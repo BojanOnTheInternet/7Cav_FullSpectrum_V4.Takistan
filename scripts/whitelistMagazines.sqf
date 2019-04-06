@@ -33,4 +33,6 @@ private _magazines = [];
 	} forEach (getArray (configFile >> "CfgWeapons" >> _weapon >> "muzzles"));
 } forEach _whitelistWeapons;
 
+_magazines = _magazines - ["TrainingMine_Mag"];
+
 _magazines

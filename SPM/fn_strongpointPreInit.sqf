@@ -116,7 +116,7 @@ SPM_Strongpoint_Run =
 		{
 			if (_time > OO_GET(_strongpoint,Strongpoint,UpdateTime)) then
 			{
-				private _updateScript = [_strongpoint] spawn { params ["_strongpoint"]; scriptName "spawnSPM_Strongpoint_Run_Strongpoint"; [] call OO_METHOD(_strongpoint,Strongpoint,Update) };
+				private _updateScript = [_strongpoint] spawn { params ["_strongpoint"]; scriptName "SPM_Strongpoint_Run_Strongpoint"; [] call OO_METHOD(_strongpoint,Strongpoint,Update) };
 				waitUntil { sleep 0.1; scriptDone _updateScript };
 			};
 
@@ -125,14 +125,14 @@ SPM_Strongpoint_Run =
 
 				if (OO_GET(_strongpoint,Strongpoint,RunState) == "running" && _time > OO_GET(_category,Category,UpdateTime)) then
 				{
-					_updateScript = [_category] spawn { params ["_category"]; scriptName "spawnSPM_Strongpoint_Run_Category"; [] call OO_METHOD(_category,Category,Update) };
+					_updateScript = [_category] spawn { params ["_category"]; scriptName "SPM_Strongpoint_Run_Category"; [] call OO_METHOD(_category,Category,Update) };
 					waitUntil { sleep 0.1; scriptDone _updateScript };
 				};
 			} forEach OO_GET(_strongpoint,Strongpoint,Categories);
 
 			if (OO_GET(_strongpoint,Strongpoint,RunState) == "running") then
 			{
-				_updateScript = [_spawnManager] spawn { params ["_spawnManager"]; scriptName "spawnSPM_Strongpoint_Run_SpawnManager"; [] call OO_METHOD(_spawnManager,SpawnManager,Update) };
+				_updateScript = [_spawnManager] spawn { params ["_spawnManager"]; scriptName "SPM_Strongpoint_Run_SpawnManager"; [] call OO_METHOD(_spawnManager,SpawnManager,Update) };
 				waitUntil { sleep 0.1; scriptDone _updateScript };
 			};
 		};

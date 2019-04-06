@@ -1,8 +1,16 @@
 [] spawn
 {
-	scriptName "spawnWeatherInit";
+	scriptName "WeatherInit";
 
 	// SERVER_Weather = [[random-triple-for-overcast, chance-of-rain-per-storm-period, chance-of-storm-having-lightning], ...] one entry for each month
+
+	if ((["Rain"] call JB_MP_GetParamValue) == 0) then
+	{
+		{
+			_x set [1, 0];
+		} forEach SERVER_Weather;
+	};
+
 
 	private _times = [date] call BIS_fnc_sunriseSunsetTime;
 	private _nightEnd = (_times select 0) - 0.9;

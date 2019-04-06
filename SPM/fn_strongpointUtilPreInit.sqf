@@ -24,8 +24,6 @@ OO_TRACE_DECL(SPM_Util_GetOwnerPlayer) =
 
 #define OO_TRACE_DECL(name) name
 
-SPM_Util_OperationImportanceOverride = -1;
-SPM_Util_NumberPlayersOverride = -1;
 SPM_Util_MessageReceivers = [{ systemchat (_this select 0) }];
 
 OO_TRACE_DECL(SPM_Util_PushMessageReceiver) =
@@ -108,7 +106,7 @@ OO_TRACE_DECL(SPM_C_Util_SurrenderMan_Surrender) =
 
 	if ([_man] call SPM_Util_IsCowering) then { [_man] call SPM_Util_StopCowering };
 
-	_man addAction ["Secure prisoner", { deleteVehicle (_this select 0) }, nil, 10, true, true, "", "vehicle _this == _this", 2];
+	_man addAction ["Secure prisoner", { deleteVehicle (_this select 0) }, nil, 10, true, true, "", "vehicle _this == _this && alive _target", 2];
 };
 
 SPM_C_Util_SurrenderMan_DestroyLoadedMagazines =
@@ -1300,9 +1298,11 @@ OO_TRACE_DECL(SPM_Util_PlaceVehicleOnSurface) =
 
 OO_TRACE_DECL(SPM_Util_NumberPlayers) =
 {
-	if (SPM_Util_NumberPlayersOverride == -1) exitWith { { not (_x isKindOf "HeadlessClient_F") } count allPlayers };
+	private _parameterValue = ["NumberPlayers"] call JB_MP_GetParamValue;
 
-	SPM_Util_NumberPlayersOverride
+	if (_parameterValue == -1) exitWith { { not (_x isKindOf "HeadlessClient_F") } count allPlayers };
+
+	_parameterValue
 };
 
 OO_TRACE_DECL(SPM_Util_NumberServiceMembers) =
@@ -1507,7 +1507,7 @@ SPM_Util_SurrenderMan_Pending = [];
 
 OO_TRACE_DECL(SPM_Util_SurrenderMan_Monitor) =
 {
-	scriptName "spawnSPM_Util_SurrenderMan_Monitor";
+	scriptName "SPM_Util_SurrenderMan_Monitor";
 
 	while { true } do
 	{
@@ -1641,7 +1641,7 @@ OO_TRACE_DECL(SPM_Util_Surrender) =
 
 [] spawn
 {
-	scriptName "spawnSPM_Util_DeleteEmptyGroups";
+	scriptName "SPM_Util_DeleteEmptyGroups";
 
 	while { true } do
 	{

@@ -232,7 +232,7 @@ OO_TRACE_DECL(SPM_AirPatrol_RestrictTargeting) =
 	{
 		params ["_vehicle"];
 
-		scriptName "spawnSPM_AirPatrol_RestrictTargeting";
+		scriptName "SPM_AirPatrol_RestrictTargeting";
 
 		private _target = objNull;
 		private _baseAreas = [0, -1, -1] call SERVER_OperationBlacklist;
@@ -429,7 +429,7 @@ OO_TRACE_DECL(SPM_AirPatrol_Update)	 =
 
 			_airfieldStrongpoint = OO_GET(_category,AirPatrolCategory,AirfieldStrongpoint);
 
-			[_airfieldStrongpoint] spawn { params ["_airfieldStrongpoint"]; scriptName "spawnSPM_AirPatrol_AirfieldRun"; [] call OO_METHOD(_airfieldStrongpoint,Strongpoint,Run) }; // Cannot spawn OO_METHODs
+			[_airfieldStrongpoint] spawn { params ["_airfieldStrongpoint"]; scriptName "SPM_AirPatrol_AirfieldRun"; [] call OO_METHOD(_airfieldStrongpoint,Strongpoint,Run) }; // Cannot spawn OO_METHODs
 		};
 
 		private _airfield = OO_GET(_category,AirPatrolCategory,Airfield);

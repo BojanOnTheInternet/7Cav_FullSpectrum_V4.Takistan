@@ -47,6 +47,8 @@ OO_TRACE_DECL(SPM_Armor_Task_Patrol) =
 	{
 		case "area":
 		{
+			[vehicle leader _patrolGroup, "ArmorStatus", "Patrol"] call TRACE_SetObjectString;
+
 			private _area = OO_GET(_category,ForceCategory,Area);
 
 			private _minRadius = OO_GET(_area,StrongpointArea,InnerRadius);
@@ -59,18 +61,20 @@ OO_TRACE_DECL(SPM_Armor_Task_Patrol) =
 		
 		case "target":
 		{
+			[_patrolGroup] call SPM_DeletePatrolWaypoints;
+
 			private _westForce = [OO_GET(_category,ForceCategory,RangeWest)] call OO_METHOD(_category,ForceCategory,GetForceLevelsWest);
 			if (count _westForce > 0) then
 			{
 				private _targetForce = selectRandom _westForce;
 				private _targetVehicle = OO_GET(_targetForce,ForceUnit,Vehicle);
 
-				[_patrolGroup] call SPM_DeletePatrolWaypoints;
-
 				private _waypoint = [_patrolGroup, getPos _targetVehicle] call SPM_AddPatrolWaypoint;
 				_waypoint waypointAttachVehicle _targetVehicle;
 				_waypoint setWaypointType "destroy";
 				[_waypoint, SPM_Armor_WS_TargetDestroyed, _category] call SPM_AddPatrolWaypointStatements;
+
+				[vehicle leader _patrolGroup, "ArmorStatus", "Target"] call TRACE_SetObjectString;
 			};
 		};
 	};
@@ -80,7 +84,25 @@ OO_TRACE_DECL(SPM_Armor_WS_Salvage) =
 {
 	params ["_leader", "_units", "_category"];
 
-	[_category, group _leader] call SPM_Force_SalvageForceUnit;
+	[vehicle _leader, "ArmorStatus", nil] call TRACE_SetObjectString;
+
+	if (not ((vehicle _leader) isKindOf "Air")) then
+	{
+		[_category, group _leader] call SPM_Force_SalvageForceUnit;
+	}
+	else
+	{
+		(vehicle _leader) land "land";
+
+		[_category, group _leader] spawn
+		{
+			params ["_category", "_group"];
+
+			[{ isTouchingGround leader _group }, 30, 5] call JB_fnc_timeoutWaitUntil;
+
+			[_category, _group] call SPM_Force_SalvageForceUnit;
+		};
+	};
 };
 
 SPM_Armor_AntiArmorWeapons =
@@ -159,30 +181,35 @@ OO_TRACE_DECL(SPM_Armor_Retire) =
 	if (not _allowReinstate) then { _vehicle setVariable ["SPM_Force_AllowReinstate", false] };
 
 	private _retirementPosition = _vehicle getVariable "SPM_Armor_CallupPosition";
-	if (_center distance _retirementPosition < _radius) then
-	{
-		private _approachDirection = OO_GET(_category,ForceCategory,CallupDirection);
-		private _spawnpoint = [_center, _radius, OO_GET(_category,ForceCategory,SideWest), _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetGroundSpawnpoint;
-		if (count (_spawnpoint select 0) > 0) then { _retirementPosition = _spawnpoint select 0 };
-	};
+	private _extendedPosition = [];
 
-	if (not (_vehicle isKindOf "Air")) then
-	{
-		private _centerToRetirement = _center vectorFromTo _retirementPosition;
-		private _positions = [_retirementPosition vectorAdd (_centerToRetirement vectorMultiply 75), 0, 50, 10] call SPM_Util_SampleAreaGrid;
-		[_positions, ["#GdtWater"]] call SPM_Util_ExcludeSamplesBySurfaceType;
-		[_positions, 5.0, ["WALL", "BUILDING", "HOUSE", "ROCK", "TREE"]] call SPM_Util_ExcludeSamplesByProximity;
+	private _preplacedEquipment = _vehicle getVariable ["SPM_Force_PreplacedEquipment", false];
 
-		if (count _positions > 0) then
+	if (not _preplacedEquipment) then
+	{
+		if (_center distance _retirementPosition < _radius) then
 		{
-			_retirementPosition = selectRandom _positions;
+			private _approachDirection = OO_GET(_category,ForceCategory,CallupDirection);
+			private _spawnpoint = [_center, _radius, OO_GET(_category,ForceCategory,SideWest), _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetGroundSpawnpoint;
+			if (count (_spawnpoint select 0) > 0) then { _retirementPosition = _spawnpoint select 0 };
 		};
+
+		if (not (_vehicle isKindOf "Air")) then
+		{
+			private _centerToRetirement = _center vectorFromTo _retirementPosition;
+			private _positions = [_retirementPosition vectorAdd (_centerToRetirement vectorMultiply 75), 0, 50, 10] call SPM_Util_SampleAreaGrid;
+			[_positions, ["#GdtWater"]] call SPM_Util_ExcludeSamplesBySurfaceType;
+			[_positions, 5.0, ["WALL", "BUILDING", "HOUSE", "ROCK", "TREE"]] call SPM_Util_ExcludeSamplesByProximity;
+
+			if (count _positions > 0) then
+			{
+				_retirementPosition = selectRandom _positions;
+			};
+		};
+
+		private _toRetirementPosition = getPos _vehicle vectorFromTo _retirementPosition;
+		_extendedPosition = _retirementPosition vectorAdd (_toRetirementPosition vectorMultiply 500); // To keep the vehicle moving at speed through its retirement position, particularly aircraft
 	};
-
-	private _toRetirementPosition = getPos _vehicle vectorFromTo _retirementPosition;
-	private _extendedPosition = _retirementPosition vectorAdd (_toRetirementPosition vectorMultiply 500); // To keep the vehicle moving at speed through its retirement position, particularly aircraft
-
-	[_vehicle, "ArmorStatus", "Retired"] call TRACE_SetObjectString;
 
 	{
 		[_x] call SPM_DeletePatrolWaypoints;
@@ -191,11 +218,13 @@ OO_TRACE_DECL(SPM_Armor_Retire) =
 
 		private _waypoint = [_x, _retirementPosition] call SPM_AddPatrolWaypoint;
 		[_waypoint, SPM_Armor_WS_Salvage, _category] call SPM_AddPatrolWaypointStatements;
-		[_x, _extendedPosition] call SPM_AddPatrolWaypoint;
+		if (count _extendedPosition > 0) then { [_x, _extendedPosition] call SPM_AddPatrolWaypoint };
 
 		_x setVariable ["SPM_Force_Retiring", true];
 
 	} forEach ([] call OO_METHOD(_forceUnit,ForceUnit,GetGroups));
+
+	[_vehicle, "ArmorStatus", "Retired"] call TRACE_SetObjectString;
 };
 
 OO_TRACE_DECL(SPM_Armor_Reinstate) =
@@ -219,14 +248,38 @@ OO_TRACE_DECL(SPM_Armor_Reinstate) =
 
 OO_TRACE_DECL(SPM_Armor_CreateUnit) =
 {
-	params ["_category", "_position", "_direction", "_type"];
+	params ["_category", "_position", "_direction", "_callup"];
 
-	private _index = OO_GET(_category,ForceCategory,CallupsEast) findIf { _x select 0 == _type };
-	if (_index == -1) exitWith {};
-	private _vehicleDescriptor = OO_GET(_category,ForceCategory,CallupsEast) select _index select 1;
+	private _unitVehicle = objNull;
 
-	private _unitVehicle = [_type, _position, _direction, "fly"] call SPM_fnc_spawnVehicle;
-	_unitVehicle setVehicleTIPars [1.0, 0.5, 0.0]; // Start vehicle hot so it shows on thermals
+	if (_callup isEqualType objNull) then
+	{
+		_unitVehicle = _callup;
+		_unitVehicle setVariable ["SPM_Force_PreplacedEquipment", true];
+		_position = getPosATL _unitVehicle;
+	}
+	else
+	{
+		_unitVehicle = [_callup select 0, _position, _direction, "fly"] call SPM_fnc_spawnVehicle;
+		[_unitVehicle] call (_callup select 1 select 3);
+
+		_unitVehicle setVehicleTIPars [1.0, 0.5, 0.0]; // Start vehicle hot so it shows on thermals
+
+		switch (true) do
+		{
+			case (_unitVehicle isKindOf "LandVehicle"):
+			{
+				[_unitVehicle, 40] call JB_fnc_limitSpeed;
+			};
+			case (_unitVehicle isKindOf "Air"):
+			{
+				_unitVehicle flyInHeight (((getPos _unitVehicle) select 2) max 50);
+			};
+		};
+	};
+
+	_unitVehicle setVariable ["SPM_Force_CalledUnit", true];
+	_unitVehicle setVariable ["SPM_Armor_CallupPosition", _position];
 
 	private _crew = [_unitVehicle] call SPM_fnc_groupFromVehicleCrew;
 	private _crewDescriptor = _crew select 1;
@@ -236,39 +289,28 @@ OO_TRACE_DECL(SPM_Armor_CreateUnit) =
 	(driver _unitVehicle) setUnitTrait ["engineer", true];
 	(driver _unitVehicle) addBackpack "B_LegStrapBag_black_repair_F";
 
-	[_unitVehicle] call (_vehicleDescriptor select 3);
-	[_category, _unitGroup] call OO_GET(_category,Category,InitializeObject);
 	[_category, _unitVehicle] call OO_GET(_category,Category,InitializeObject);
-
-	_unitVehicle setVariable ["SPM_Armor_CallupPosition", _position];
+	[_category, _unitGroup] call OO_GET(_category,Category,InitializeObject);
 
 	_unitGroup setSpeedMode "full";
 
-	switch (true) do
-	{
-		case (_unitVehicle isKindOf "LandVehicle"):
-		{
-			[_unitVehicle, 40] call JB_fnc_limitSpeed;
-		};
-		case (_unitVehicle isKindOf "Air"):
-		{
-			_unitVehicle flyInHeight ((getPos _unitVehicle) select 2);
-		};
-	};
-
 	private _forceUnit = [_unitVehicle, units _unitGroup] call OO_CREATE(ForceUnit);
-
 	OO_GET(_category,ForceCategory,ForceUnits) pushBack _forceUnit;
-	private _forceRatings = [OO_GET(_forceUnit,ForceUnit,Units), OO_GET(_category,ForceCategory,RatingsEast)] call SPM_Force_GetForceRatings;
 
-	if (count _forceRatings == 0) then
+	// If called up against the reserves of the category, subtract the appropriate amount
+	if (_callup isEqualType []) then
 	{
-		diag_log format ["SPM_Armor_CreateUnit: no force rating available for %1.  Created unit not charged against category reserves.", _type];
-	}
-	else
-	{
-		private _reserves = OO_GET(_category,ForceCategory,Reserves) - OO_GET(_forceRatings select 0,ForceRating,Rating);
-		OO_SET(_category,ForceCategory,Reserves,_reserves);
+		private _forceRatings = [OO_GET(_forceUnit,ForceUnit,Units), OO_GET(_category,ForceCategory,RatingsEast)] call SPM_Force_GetForceRatings;
+
+		if (count _forceRatings == 0) then
+		{
+			diag_log format ["SPM_Armor_CreateUnit: no force rating available for %1.  Created unit not charged against category reserves.", typeOf _unitVehicle];
+		}
+		else
+		{
+			private _reserves = OO_GET(_category,ForceCategory,Reserves) - OO_GET(_forceRatings select 0,ForceRating,Rating);
+			OO_SET(_category,ForceCategory,Reserves,_reserves);
+		};
 	};
 
 	_forceUnit
@@ -276,23 +318,29 @@ OO_TRACE_DECL(SPM_Armor_CreateUnit) =
 
 OO_TRACE_DECL(SPM_Armor_CallUp) =
 {
-	params ["_position", "_direction", "_category", "_type"];
+	params ["_position", "_direction", "_category", "_callup"];
 
 	private _pendingCallups = OO_GET(_category,ForceCategory,PendingCallups) - 1;
 	OO_SET(_category,ForceCategory,PendingCallups,_pendingCallups);
 
 	if (OO_GET(_category,ForceCategory,_Surrendered)) exitWith {};
 
-	private _forceUnit = [_category, _position, _direction, _type] call SPM_Armor_CreateUnit;
+	private _forceUnit = [_category, _position, _direction, _callup] call SPM_Armor_CreateUnit;
+	private _vehicle = OO_GET(_forceUnit,ForceUnit,Vehicle);
+
+	if (isNull _vehicle) exitWith {};
+
 	[_category, group (OO_GET(_forceUnit,ForceUnit,Units) select 0)] call SPM_Armor_Task_Patrol;
 
-	[OO_GET(_forceUnit,ForceUnit,Vehicle), 20, 10, 20] call SPM_Util_WaitForVehicleToMove;
-
-	if (not alive OO_GET(_forceUnit,ForceUnit,Vehicle) || { _position distance OO_GET(_forceUnit,ForceUnit,Vehicle) < 10 }) exitWith
+	if (_callup isEqualType []) then
 	{
-		[_category, _forceUnit] call SPM_Force_SalvageForceUnit;
-	};
+		[_vehicle, 20, 10, 20] call SPM_Util_WaitForVehicleToMove;
 
+		if (not alive _vehicle || { _position distance _vehicle < 10 }) exitWith
+		{
+			[_category, _forceUnit] call SPM_Force_SalvageForceUnit;
+		};
+	};
 };
 
 OO_TRACE_DECL(SPM_Armor_Create) =
@@ -384,6 +432,35 @@ OO_TRACE_DECL(SPM_Armor_RemoveCapturedForceUnits) =
 	};
 };
 
+// Create a list of the category's callup types that have been preplaced in the category's area.  The list is [[type,count], ...]
+OO_TRACE_DECL(SPM_Armor_PreplacedEquipment) =
+{
+	params ["_category"];
+
+	private _area = OO_GET(_category,ForceCategory,Area);
+	private _center = OO_GET(_area,StrongpointArea,Position);
+	private _innerRadius = OO_GET(_area,StrongpointArea,InnerRadius);
+	private _outerRadius = OO_GET(_area,StrongpointArea,OuterRadius);
+
+	private _callupsEast = OO_GET(_category,ForceCategory,CallupsEast);
+	private _preplacedTypes = _callupsEast apply { _x select 0 };
+	private _preplacedUnits = _center nearEntities [_preplacedTypes, _outerRadius] select { _x distance _center >= _innerRadius };
+	_preplacedUnits = _preplacedUnits select { not (_x getVariable ["SPM_Force_CalledUnit", false]) && { count crew _x == 0 } && { simulationEnabled _x } && { [_x] call SPM_Force_IsCombatEffectiveVehicle } };
+
+	private _type = "";
+	private _units = [];
+	private _preplacedEquipment = [];
+	{
+		_type = _x;
+		_units = _preplacedUnits select { _x isKindOf _type };
+		if (count _units > 0) then { _preplacedEquipment pushBack [_type, _units] };
+	} forEach _preplacedTypes;
+
+	OO_TRACE_SYMBOL(_preplacedEquipment);
+
+	_preplacedEquipment
+};
+
 OO_TRACE_DECL(SPM_Armor_Update) =
 {
 	params ["_category"];
@@ -430,8 +507,11 @@ OO_TRACE_DECL(SPM_Armor_Update) =
 
 	_westForce = _westForce select { canFire OO_GET(_x,ForceRating,Vehicle) };
 
-	private _firstRebalance = OO_GET(_category,ForceCategory,_FirstRebalance);
-	private _changes = [_category, _westForce, _eastForce] call SPM_Force_Rebalance;
+	private _preplacedEquipment = if (OO_GET(_category,ArmorCategory,UsePreplacedEquipment)) then { [_category] call SPM_Armor_PreplacedEquipment } else { [] };
+
+	OO_TRACE_SYMBOL(_preplacedEquipment);
+
+	private _changes = [_category, _westForce, _eastForce, _preplacedEquipment] call SPM_Force_Rebalance;
 
 	private _units = OO_GET(_category,ForceCategory,ForceUnits);
 
@@ -456,7 +536,7 @@ OO_TRACE_DECL(SPM_Armor_Update) =
 	// Callups only every CALLUP_INTERVAL
 	private _callupTime = OO_GET(_category,ArmorCategory,_CallupTime);
 
-	if (diag_tickTime > _callupTime) then
+	if (diag_tickTime >= _callupTime) then
 	{
 		private _callupInterval = OO_GET(_category,ArmorCategory,CallupInterval);
 		private _callupTime = diag_tickTime + (_callupInterval select 0) + (random ((_callupInterval select 1) - (_callupInterval select 0)));
@@ -474,7 +554,7 @@ OO_TRACE_DECL(SPM_Armor_Update) =
 
 			// On the very first rebalance, assume that the vehicles can be scattered around the interior of the armor area.  All other times,
 			// they must drive in from the perimeter.
-			if (_firstRebalance) then
+			if (OO_GET(_category,ForceCategory,_FirstRebalance)) then
 			{
 				private _positions = [_center, _innerRadius, _outerRadius, OO_GET(_category,ForceCategory,SideWest)] call SPM_Util_GetInteriorSpawnPositions;
 
@@ -483,7 +563,7 @@ OO_TRACE_DECL(SPM_Armor_Update) =
 
 					private _position = _positions deleteAt (floor random count _positions);
 
-					[_position, random 360, SPM_Armor_CallUp, [_category, _x select 0]] call OO_METHOD(_spawnManager,SpawnManager,ScheduleSpawn);
+					[_position, random 360, SPM_Armor_CallUp, [_category, _x]] call OO_METHOD(_spawnManager,SpawnManager,ScheduleSpawn);
 
 					private _pendingCallups = OO_GET(_category,ForceCategory,PendingCallups) + 1;
 					OO_SET(_category,ForceCategory,PendingCallups,_pendingCallups);
@@ -493,18 +573,32 @@ OO_TRACE_DECL(SPM_Armor_Update) =
 			{
 				private _approachDirection = OO_GET(_category,ForceCategory,CallupDirection);
 
-				private _groundSpawnpoint = [OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), _center, _outerRadius, OO_GET(_category,ForceCategory,SideWest), _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetRoadSpawnpoint;
-				if (count (_groundSpawnpoint select 0) == 0) then { _groundSpawnpoint = [OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), OO_GET(_category,ForceCategory,SideWest), _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetGroundSpawnpoint };
-
+				private _groundSpawnpoint = [];
 				private _airSpawnpoints = [];
-				for "_i" from 1 to 3 do
+
+				private _getSpawnpoint =
 				{
-					_airSpawnpoints pushBack ([OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), 1500, 100 + random 100, _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetAirSpawnpoint);
+					params ["_objectType"];
+
+					if (_objectType isKindOf "Air") exitWith
+					{
+						if (count _airSpawnpoints == 0) then { _airSpawnpoints = [0, 1, 2] apply { [OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), 1500, 100 + random 100, _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetAirSpawnpoint } };
+						selectRandom _airSpawnpoints
+					};
+
+					if (count _groundSpawnpoint == 0) then
+					{
+						_groundSpawnpoint = [OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), _center, _outerRadius, OO_GET(_category,ForceCategory,SideWest), _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetRoadSpawnpoint;
+						if (count (_groundSpawnpoint select 0) == 0) then { _groundSpawnpoint = [OO_GET(_strongpoint,Strongpoint,Position), OO_GET(_strongpoint,Strongpoint,ActivityRadius), OO_GET(_category,ForceCategory,SideWest), _approachDirection select 0, _approachDirection select 1] call SPM_Util_GetGroundSpawnpoint };
+					};
+					_groundSpawnpoint
 				};
 
 				{
-					private _spawnpoint = if ((_x select 0) isKindOf "Air") then { selectRandom _airSpawnpoints } else { _groundSpawnpoint };
-					[_spawnpoint select 0, _spawnpoint select 1, SPM_Armor_CallUp, [_category, _x select 0]] call OO_METHOD(_spawnManager,SpawnManager,ScheduleSpawn);
+					private _objectType = if (_x isEqualType []) then { _x select 0 } else { typeOf _x };
+					private _spawnpoint = [_objectType] call _getSpawnpoint;
+
+					[_spawnpoint select 0, _spawnpoint select 1, SPM_Armor_CallUp, [_category, _x]] call OO_METHOD(_spawnManager,SpawnManager,ScheduleSpawn);
 
 					private _pendingCallups = OO_GET(_category,ForceCategory,PendingCallups) + 1;
 					OO_SET(_category,ForceCategory,PendingCallups,_pendingCallups);
@@ -527,4 +621,5 @@ OO_BEGIN_SUBCLASS(ArmorCategory,ForceCategory);
 	OO_DEFINE_PROPERTY(ArmorCategory,CallupInterval,"ARRAY",CALLUP_INTERVAL);
 	OO_DEFINE_PROPERTY(ArmorCategory,_RetireTime,"SCALAR",0);
 	OO_DEFINE_PROPERTY(ArmorCategory,RetireInterval,"ARRAY",RETIRE_INTERVAL);
+	OO_DEFINE_PROPERTY(ArmorCategory,UsePreplacedEquipment,"BOOL",false);
 OO_END_SUBCLASS(ArmorCategory);

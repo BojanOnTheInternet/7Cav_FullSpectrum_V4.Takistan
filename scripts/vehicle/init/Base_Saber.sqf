@@ -1,6 +1,6 @@
 //Currently Leopard 2
 
-private _desertMaps = ["Altis", "Takistan"];
+private _desertMaps = ["Altis", "Takistan", "tem_anizay"];
 
 [_this select 0, {
 

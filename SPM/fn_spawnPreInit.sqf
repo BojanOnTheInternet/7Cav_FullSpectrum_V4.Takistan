@@ -41,7 +41,7 @@ SPM_RecordDeath =
 
 		[] spawn
 		{
-			scriptName "spawnSPM_RecordDeath";
+			scriptName "SPM_RecordDeath";
 
 			private _pendingBodies = [];
 			private _pendingBody = objNull;
@@ -114,7 +114,7 @@ SPM_RecordDestruction =
 		{
 			private _sleepDuration = 0;
 
-			scriptName "spawnSPM_RecordDestruction";
+			scriptName "SPM_RecordDestruction";
 			while { true } do
 			{
 				private _currentTime = diag_tickTime;
@@ -420,11 +420,23 @@ SPM_SpawnVehicle =
 {
 	params ["_type", "_position", "_direction", "_special"];
 
+	private _curate = true;
+	if (_special isEqualType []) then
+	{
+		private _index = _special findIf { _x == "do_not_curate" };
+		if (_index != -1) then
+		{
+			_curate = false;
+			_special deleteAt _index;
+		};
+		_special = if (count _special > 0) then { _special select 0 } else { "" };
+	};
+
 	private _vehicle = createVehicle [_type, call SPM_Util_RandomSpawnPosition, [], 0, _special];
 	_vehicle setDir _direction;
 	[_vehicle, _position] call SPM_Util_SetPosition;
 
-	[[_vehicle]] call SERVER_CurateEditableObjects;
+	if (_curate) then { [[_vehicle]] call SERVER_CurateEditableObjects };
 
 	if (_vehicle isKindOf "AllVehicles") then
 	{

@@ -71,7 +71,7 @@ OO_TRACE_DECL(SPM_ParkedVehicles_Update) =
 
 		if (count _parking > 0) then
 		{
-			private _vehicle = [_types select (_i - 1), _parking select 0, _parking select 1, "can_collide"] call SPM_SpawnVehicle;
+			private _vehicle = [_types select (_i - 1), _parking select 0, _parking select 1, "can_collide"] call SPM_fnc_spawnVehicle;
 			[_category, _vehicle] call OO_GET(_category,Category,InitializeObject);
 			_vehicles pushBack _vehicle;
 		};

@@ -25,6 +25,8 @@ _spawn_box = {
   clearmagazinecargoGlobal _crate;
   clearitemcargoGlobal _crate;
   clearbackpackcargoGlobal _crate;
+
+  [[_crate]] call SERVER_CurateEditableObjects;
 };
 
 _spawn_medical_box = {
@@ -49,6 +51,8 @@ _spawn_medical_box = {
   _crate addItemCargoGlobal ["ACE_salineIV", 30]; 
   _crate addItemCargoGlobal ["ACE_tourniquet", 30]; 
   _crate addItemCargoGlobal ["ACE_packingBandage", 100];
+
+  [[_crate]] call SERVER_CurateEditableObjects;
 };
 
 _spawn_at_box = {
@@ -66,6 +70,7 @@ _spawn_at_box = {
   _crate addWeaponCargoGlobal ["launch_MRAWS_green_F", 3];  
   _crate addMagazineCargoGlobal ["MRAWS_HEAT_F", 17];
 
+  [[_crate]] call SERVER_CurateEditableObjects;
 };
 
 _spawn_ammo_box = {
@@ -95,6 +100,7 @@ _spawn_ammo_box = {
   _crate addMagazineCargoGlobal ["rhs_mag_M441_HE", 15]; 
   _crate addMagazineCargoGlobal ["rhs_mag_m714_White", 5];
   
+  [[_crate]] call SERVER_CurateEditableObjects;
 };
 
 _spawn_night_box = {
@@ -126,9 +132,11 @@ _spawn_night_box = {
   _crate addMagazineCargoGlobal ["ACE_HandFlare_White", 10]; 
   _crate addMagazineCargoGlobal ["ACE_HandFlare_Yellow", 10]; 
   _crate addMagazineCargoGlobal ["SmokeShellBlue", 20]; 
-  _crate addMagazineCargoGlobal ["SmokeShellWhite", 20]; 
+  _crate addMagazineCargoGlobal ["SmokeShell", 20]; 
   _crate addMagazineCargoGlobal ["SmokeShellPurple", 20]; 
   _crate addMagazineCargoGlobal ["SmokeShellRed", 20]; 
+
+  [[_crate]] call SERVER_CurateEditableObjects;
 };
 
 _spawn_javelin_box = {
@@ -145,6 +153,8 @@ _spawn_javelin_box = {
 
   _crate addWeaponCargoGlobal ["rhs_weap_fgm148", 1]; 
   _crate addMagazineCargoGlobal ["rhs_fgm148_magazine_AT", 5]; 
+
+  [[_crate]] call SERVER_CurateEditableObjects;
 };
 
 // Interaction option for each type of box

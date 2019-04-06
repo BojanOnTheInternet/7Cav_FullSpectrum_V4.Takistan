@@ -1024,6 +1024,15 @@ ASL_SLING_RULES =
 	["B_Heli_Transport_03_unarmed_F", "CAN_SLING","rhsusf_M109*"],	
 	["B_Heli_Transport_03_unarmed_F", "CAN_SLING","RHS_M2A3*"],
 	["B_Heli_Transport_03_unarmed_F", "CAN_SLING","B_MRAP*"],
+	
+	["RHS_CH_47*", "CAN_SLING","rhsusf_M108*"],
+	["RHS_CH_47*", "CAN_SLING","rhsusf_M107*"],
+	["RHS_CH_47*", "CAN_SLING","rhsusf_M12*"],
+	["RHS_CH_47*", "CAN_SLING","rhsusf_M97*"],
+	["RHS_CH_47*", "CAN_SLING","rhsusf_M109*"],	
+	["RHS_CH_47*", "CAN_SLING","RHS_M2A3*"],
+	["RHS_CH_47*", "CAN_SLING","B_MRAP*"],
+	
 	["All","CANNOT_SLING","Man"],
 	["All","CANNOT_SLING","Plane"],
 	["All","CANNOT_SLING","Helicopter"],

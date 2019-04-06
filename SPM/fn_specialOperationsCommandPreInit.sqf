@@ -778,7 +778,7 @@ OO_TRACE_DECL(SPM_SOC_RunMissionSequence) =
 		else
 		{
 			OO_SET(_soc,SpecialOperationsCommand,RunningMission,_mission);
-			private _script = [_mission] spawn { params ["_mission"]; scriptName "spawnSPM_SOC_RunMissionSequence"; [] call OO_METHOD(_mission,Strongpoint,Run) }; // Cannot spawn OO_METHODs
+			private _script = [_mission] spawn { params ["_mission"]; scriptName "SPM_SOC_RunMissionSequence"; [] call OO_METHOD(_mission,Strongpoint,Run) }; // Cannot spawn OO_METHODs
 			OO_SET(_soc,SpecialOperationsCommand,RunningMissionScript,_script);
 
 			while { OO_GET(_mission,Mission,MissionState) == "unresolved" && not (OO_GET(_mission,Strongpoint,RunState) in ["stopped", "deleted"]) } do

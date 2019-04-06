@@ -116,7 +116,7 @@ HUDTESTCallback =
 	private _text = "AO Transport (en route)";
 
 	private _entities = _position nearEntities [["Helicopter"], 5];
-	if (count _entities > 0 && { count ((_entities select 0) getVariable ["AirTransport_Routes", []]) > 0 }) then { _text = "AO Transport (ready)" };
+	if (count _entities > 0 && { count ((_entities select 0) getVariable ["JB_AT_Aircraft_Routes", []]) > 0 }) then { _text = "AO Transport (ready)" };
 
 	[_position, _text, _color, _minDistance, _maxDistance, _sizeInMeters, _font]
 };
@@ -210,7 +210,7 @@ HUD_DrawIcon =
 
 HUD_GetMarkerIcons =
 {
-	params ["_prefix", "_icons"]; // Prefix must be of format "string_string_", e.g. "HUD_Pilot_"
+	params ["_prefix", "_icons"]; // Prefix must be of format "string_string_", e.g. "HUD_Greeting1_Pilot_Hello"
 
 	private _pieces = [];
 	private _descriptor = [];
@@ -245,7 +245,7 @@ HUD_GetMarkerIcons =
 					if (not isNil "_named") then { _key = +_named };
 
 					_color = getArray (configFile >> "CfgMarkerColors" >> getMarkerColor _x >> "color");
-					_color = _color apply { if (_x isEqualType 0) then { _x } else { [] call compile _x } };
+					_color = _color apply { if (_x isEqualType 0) then { _x } else { call compile _x } };
 
 					_minDistance = parseNumber _minDistance;
 					_maxDistance = parseNumber _maxDistance;

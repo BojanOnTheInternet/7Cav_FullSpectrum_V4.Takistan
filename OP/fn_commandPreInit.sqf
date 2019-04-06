@@ -407,8 +407,8 @@ OO_TRACE_DECL(OP_COMMAND_Execute) =
 
 	private _commands =
 	[
-		["operation", OP_COMMAND__Operation],
 		["advance", OP_COMMAND__Advance],
+		["operation", OP_COMMAND__Operation],
 		["specops", OP_COMMAND__SpecialOperations]
 	];
 

@@ -148,7 +148,7 @@ JB_SV_Message = "Starting service";
 
 [] spawn
 {
-	scriptName "spawnJB_fnc_serviceVehicle";
+	scriptName "JB_fnc_serviceVehicle";
 
 	while { not isNil "JB_SV_Message" } do
 	{

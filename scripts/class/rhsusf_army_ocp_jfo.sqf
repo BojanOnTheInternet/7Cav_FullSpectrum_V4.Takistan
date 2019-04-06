@@ -6,6 +6,8 @@ if (_state == "init") then
 	[] call HUD_Infantry_Initialize;
 	[] call HUD_Repair_Initialize;
 
+	[] call Tac2_fnc_treeCutterInitPlayer;
+
 	player setVariable ["SPM_BranchOfService", "support"];
 	player setVariable ["JBA_LogisticsSpecialist", true, true];
 

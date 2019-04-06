@@ -116,7 +116,7 @@ JBR_RepairSystem =
 	{
 		params ["_systemIndex"];
 
-		scriptName "spawnJBR_RepairSystem";
+		scriptName "JBR_RepairSystem";
 
 		disableSerialization;
 
@@ -247,6 +247,8 @@ JBR_InspectVehicle =
 	(findDisplay 46) createDisplay "JBR_Repair";
 	waitUntil { not isNull (findDisplay REPAIR_DISPLAY) };
 
+	call CLIENT_DisableScrollMenu;
+
 	disableSerialization;
 	private _display = findDisplay REPAIR_DISPLAY;
 	private _systemsList = _display displayCtrl SYSTEMS_LIST;
@@ -263,17 +265,20 @@ JBR_InspectVehicle =
 	{
 		params ["_display"];
 
-		scriptName "spawnJBR_InspectVehicle";
+		scriptName "JBR_InspectVehicle";
 
 		disableSerialization;
 
-		while { not isNull _display } do
+		while { not isNull _display && lifeState player in ["HEALTHY", "INJURED"] } do
 		{
 			{
 				[_x, _forEachIndex] call JBR_UpdateSystemRow;
 			} forEach JBR_VehicleSystems;
+
 			sleep 1;
 		};
+
+		if (not isNull _display) then { _display closeDisplay IDC_CANCEL };
 	};
 };
 
@@ -369,6 +374,8 @@ JBR_RepairUnload =
 	{
 		[] call JBR_RepairSystemStop;
 	};
+
+	call CLIENT_EnableScrollMenu;
 };
 
 JBR_RepairDoneAction =
@@ -380,7 +387,7 @@ JBR_RepairDoneAction =
 
 JBR_SetupActions =
 {
-	player addAction ["<t color='#FFFF99'>Inspect vehicle condition</t>", { [cursorTarget] call JBR_InspectVehicle }, [], 0, false, true, "", "[cursorTarget] call JBR_InspectVehicleCondition;"];
+	player addAction ["<t color='#FFFF99'>Inspect vehicle condition</t>", { [cursorObject] call JBR_InspectVehicle }, [], 0, false, true, "", "[cursorObject] call JBR_InspectVehicleCondition;"];
 };
 
 private _unit = param [0, objNull, [objNull]];

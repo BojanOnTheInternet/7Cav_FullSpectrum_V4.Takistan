@@ -13,7 +13,7 @@ if (isNumber (missionConfigFile >> "briefing") && { getNumber (missionConfigFile
 {
 	[] spawn
 	{
-		scriptName "spawnCloseBriefingScreen";
+		scriptName "CloseBriefingScreen";
 
 		waitUntil
 			{
@@ -36,7 +36,6 @@ TypeFilter_All =
 	["All", true]
 ];
 
-//Buffalo and raven combined.
 TypeFilter_TransportRotory =
 [
 	["ParachuteBase", false],
@@ -68,8 +67,13 @@ TypeFilter_TransportRotory =
 	["B_Heli_Light_01_F", true],
 	["RHS_CH_47F*", true],
 
-	//Allowing Buffalo crew to run the armed blackfish as an AC130
+	// Allowing Buffalo crew to run the armed blackfish as an AC130
 	["B_T_VTOL_01_armed_F", true],
+
+	// Titan vehicles
+	["RHS_C130J", true],
+	["B_T_VTOL_01_vehicle_F", true],
+	["B_Heli_Transport_03_unarmed_F", true],
 
 	["All", false]
 ];
@@ -90,40 +94,6 @@ TypeFilter_AttackRotory =
 	["All", false]
 ];
 
-// Co-pilotable Aircraft that we want co-pilots to be able to get into
-// or we want infantry to ride in as "gunners"
-TypeFilter_Copilot =
-[
-	//Format
-	["ParachuteBase", false],
-	//Vanilla Helis
-	["B_Heli_Transport_03_F", true],
-	["B_Heli_Transport_03_unarmed_F", true],
-	["B_Heli_Light_01_dynamicLoadout_F", true],
-	["B_CTRG_Heli_Transport_01_sand_F", true],
-	["B_CTRG_Heli_Transport_01_tropic_F", true],
-	["B_Heli_Transport_01_F", true],
-	["B_Heli_Light_01_F", true],
-	//Socom Helis
-	["RHS_MELB_*", true],
-	//RHS US Army Helis
-	["RHS_C*", true],
-	["RHS_UH60*", true],
-	//RHS USMC helis
-	["RHS_UH1Y_UNARMED_d", true],
-	["RHS_UH1Y_d", true],
-	["RHS_UH1Y_FFAR_d", true],
-	["rhsusf_CH53E_USMC_D", true],
-	//Horizon Islands Defence Force Helis
-	["rhs_uh1h_hidf", true],
-	["rhs_uh1h_hidf_unarmed", true],
-	["rhs_uh1h_hidf_gunship", true],
-	// Iraqi Armed Forces Helis
-	["LOP_IA_UH1Y_UN", true],
-	//Format
-	["All", false]
-];
-
 // Ground attack aircraft
 TypeFilter_GroundAttackAircraft =
 [
@@ -136,18 +106,12 @@ TypeFilter_GroundAttackAircraft =
 	["All", false]
 ];
 
-TypeFilter_TransportFixedWing =
-[
-	["RHS_C130J", true],
-	["B_T_VTOL_01_vehicle_F", true],
-	["B_Heli_Transport_03_unarmed_F", true],
-	["All", false]
-];
 
 // Armored vehicles
 TypeFilter_ArmoredVehicles =
 [
-	["Tank", true], // <-- This covers all tanks
+	["MBT_03_base_F", true], // Leopard 2
+	["MBT_01_base_F", true], // Most other western tanks (Abrams, Merkava)
 	["All", false]
 ];
 
@@ -167,7 +131,7 @@ TypeFilter_LogisticsVehicles =
 	["rhsusf_M1230A1*", true], // Medical MRAP
 	["rhsusf_M109*", true], // SPG
 	["rhsusf_m113_usarmy_medical", true], //Medical M113
-	["B_APC_Tracked_01_CRV_F", true], //Bobcat
+	["B_APC_Tracked_01*", true], //Bobcat
 	["All", false]
 ];
 
@@ -287,7 +251,7 @@ CLIENT_SetInfantryVehiclePermissions =
 
 	// We disallow infantry to ride in the vehicle transport chinook
 	_permissions = [];
-	_permissions pushBack [TypeFilter_All - ["B_Heli_Transport_03_unarmed_F"], [], {}];
+	_permissions pushBack [TypeFilter_All, [], {}];
 	_permissions pushBack [TypeFilter_LogisticsVehicles, [], {}];
 	_player setVariable ["VP_Cargo", _permissions];
 
@@ -308,9 +272,9 @@ CLIENT_SetInfantryVehiclePermissions =
 	_player setVariable ["VP_Commander", _permissions];
 
 	_permissions = [];
-	_permissions pushBack [TypeFilter_TransportRotory, [], {}];
 	_permissions pushBack [TypeFilter_LogisticsVehicles, [], {}];
 	_permissions pushBack [TypeFilter_InfantryVehicles, [], {}];
+	_permissions pushBack [TypeFilter_TransportRotory, [], { if (player in [(_this select 0) turretUnit [0]]) then { (_this select 0) enableCopilot false } }];
 	_permissions pushBack [TypeFilter_All, [VPC_UnlessTurretArmed], { if (player in [(_this select 0) turretUnit [0]]) then { (_this select 0) enableCopilot false } }];
 	_player setVariable ["VP_Turret", _permissions];
 
@@ -567,15 +531,39 @@ CLIENT_CombatTeleportCondition =
 	_permitTeleport
 };
 
-CLIENT_ScrollMenuHandlers = [];
+CLIENT_DisableScrollMenuLevel = 0;
 
-CLIENT_ScrollMenuHandler =
+CLIENT_DisableScrollMenu =
 {
+	CLIENT_DisableScrollMenuLevel = CLIENT_DisableScrollMenuLevel + 1;
+};
+
+CLIENT_EnableScrollMenu =
+{
+	CLIENT_DisableScrollMenuLevel = CLIENT_DisableScrollMenuLevel - 1;
+};
+
+CLIENT_ScrollMenuNextHandler =
+{
+	CLIENT_DisableScrollMenuLevel > 0
+};
+
+CLIENT_ScrollMenuPrevHandler =
+{
+	CLIENT_DisableScrollMenuLevel > 0
+};
+
+CLIENT_ScrollMenuActionHandlers = [];
+
+CLIENT_ScrollMenuActionHandler =
+{
+	if (CLIENT_DisableScrollMenuLevel > 0) exitWith { true };
+
 	private _override = false;
 
 	{
 		_override = _override || (_this call _x);
-	} forEach CLIENT_ScrollMenuHandlers;
+	} forEach CLIENT_ScrollMenuActionHandlers;
 
 	_override
 };
@@ -591,7 +579,7 @@ CLIENT_OverrideActionHandler =
 	_this call (CLIENT_OverriddenActions select _index select 1)
 };
 
-CLIENT_ScrollMenuHandlers pushBack CLIENT_OverrideActionHandler;
+CLIENT_ScrollMenuActionHandlers pushBack CLIENT_OverrideActionHandler;
 
 [] spawn
 {
@@ -795,7 +783,7 @@ CLIENT_ForceDryFireCondition =
 
 CLIENT_ForceDryFire =
 {
-	titleText [[] call CLIENT_DryFireMessage, "PLAIN DOWN", 0.1];
+	titleText [[] call CLIENT_DryFireMessage, "plain down", 0.1];
 
 	private _sound = (getArray (configFile >> "CfgWeapons" >> ([player] call SPM_Util_CurrentWeapon) >> "drysound")) select 0;
 
@@ -811,7 +799,7 @@ CLIENT_ForceDryFireFiredHandler =
 	if ([] call CLIENT_DryFireIsForced && { [_this select 1] call JB_fnc_isOffensiveWeapon }) then
 	{
 		deleteVehicle (_this select 6);
-		titleText [[] call CLIENT_DryFireMessage, "PLAIN DOWN", 0.1];
+		[[] call CLIENT_DryFireMessage, 0.5, true] call JB_fnc_showBlackScreenMessage;
 	};
 };
 
@@ -823,7 +811,7 @@ CLIENT_ForceDryFireInputHandler =
 		// If on foot or in a "person turret", block the throw
 		if (vehicle player == player || { [player] call SPM_Util_UnitIsInPersonTurret }) then
 		{
-			titleText [[] call CLIENT_DryFireMessage, "PLAIN DOWN", 0.1];
+			[[] call CLIENT_DryFireMessage, 0.5, true] call JB_fnc_showBlackScreenMessage;
 
 			true
 		};
@@ -982,7 +970,7 @@ CLIENT_MonitorEnemyControlledAreas =
 {
 	[] spawn
 	{
-		scriptName "spawnCLIENT_MonitorEnemyControlledAreas";
+		scriptName "CLIENT_MonitorEnemyControlledAreas";
 
 		private _notifyTime = 0;
 
@@ -1107,10 +1095,10 @@ Bobcat_PlowAction =
 	_vehicle animate ["moveplow", if (_vehicle animationPhase "moveplow" > 0.5) then { 0.0 } else { 1.0 }];
 };
 
-Bobcat_AddActions =
+Bobcat_SetupClient =
 {
 	params ["_vehicle"];
-
+	
 	if (not hasInterface) exitWith {};
 
 	private _action = _vehicle addAction ["", { [_this select 0] call Bobcat_PlowAction }, nil, 0, false, true, "", '[_target] call Bobcat_PlowActionCondition'];
@@ -1118,39 +1106,186 @@ Bobcat_AddActions =
 	_vehicle setVariable ["Bobcat_Actions", [_action]];
 };
 
+Marshall_Fortify_GetLocationCondition =
+{
+	params ["_vehicle"];
+
+	if (vehicle player != _vehicle) exitWith { false };
+
+	if (not (lifeState player in ["HEALTHY", "INJURED"])) exitWith { false };
+
+	true
+};
+
+Marshall_Fortify_GetMarker =
+{
+	format ["_USER_DEFINED Marshall_Fortify/0/%1", currentChannel];
+};
+
+Marshall_Fortify_GetLocation =
+{
+	params ["_vehicle"];
+
+	private _depot = (allMissionObjects "Land_RepairDepot_01_base_F") select { "RepairDepot0" in (_x getVariable ["JB_PO_Object", []]) };
+
+	if (count _depot == 0) exitWith { systemchat "The fortification tool is not deployed" };
+
+	private _position = getPos (_depot select 0);
+
+	private _marker = call Marshall_Fortify_GetMarker;
+	deleteMarker _marker;
+
+	private _marker = createMarkerLocal [_marker, _position];
+	_marker setMarkerType "hd_flag";
+	_marker setMarkerText "Fortification";
+
+	systemchat format ["The fortification tool has been marked at %1, %2", floor ((_position select 0) / 100), floor ((_position select 1) / 100)];
+};
+
+Marshall_Fortify_SetupClient =
+{
+	params ["_vehicle"];
+
+	_vehicle addAction ["Mark location of fortification tool", { _this call Marshall_Fortify_GetLocation }, nil, 0, false, true, "", "[_target] call Marshall_Fortify_GetLocationCondition"];
+};
+
+CLIENT_NearSupply =
+{
+	params ["_container", "_supplyType", "_distance"];
+
+	// 40 meters is the distance between two large object centers
+	private _supplies = (_container nearObjects 40) select { _x getVariable ["SupplyType", ""] == _supplyType };
+
+	if (count _supplies == 0) exitWith { objNull };
+
+	_supplies = _supplies apply { [[_container, _x] call JB_fnc_distanceBetweenBoundingBoxes, _x] };
+	_supplies sort true;
+
+	if (_supplies select 0 select 0 > _distance) exitWith { objNull };
+
+	_supplies select 0 select 1
+};
+
+CLIENT_ClearVehicleInventory =
+{
+	[] spawn
+	{
+		private _itemCount = 0; { _itemCount = _itemCount + _x } forEach ((getItemCargo vehicle player select 1) + (getWeaponCargo vehicle player select 1) + (getBackpackCargo vehicle player select 1) + (getMagazineCargo vehicle player select 1));
+		private _message = format ["Clear inventory on %1? (%2 items)", [typeOf vehicle player, "CfgVehicles"] call JB_fnc_displayName, _itemCount];
+		if ([_message, "CLEAR VEHICLE INVENTORY", true, true, findDisplay 46] call BIS_fnc_guiMessage) then { [vehicle player] call JB_fnc_containerClear };
+	};
+};
+
+CLIENT_ClearVehicleInventoryCondition =
+{
+	if (vehicle player isKindOf "Man") exitWith { false };
+
+	if (player != driver vehicle player && player != commander vehicle player && player != gunner vehicle player) exitWith { false };
+
+	true
+};
+
+CLIENT_EditContainerInventoryCondition =
+{
+	params ["_container"];
+
+	if (vehicle player != player) exitWith { false };
+	
+	if (not (lifeState player in ["HEALTHY", "INJURED"])) exitWith { false };
+
+	if (not ([_container] call JB_fnc_containerIsContainer)) exitWith { false };
+
+	if ([_container] call JB_fnc_containerIsLocked) exitWith { false };
+
+	if (isNull ([_container, "arsenal", 5] call CLIENT_NearSupply)) exitWith { false };
+
+	private _actionID = player getVariable ["CLIENT_EditContainerInventory_Action", -1];
+	if (_actionID != -1) then
+	{
+		player setUserActionText [_actionID, format ["Edit inventory of %1", getText (configFile >> "CfgVehicles" >> typeOf _container >> "displayName")]];
+	};
+
+	true
+};
+
+CLIENT_EditContainerInventory =
+{
+	_this spawn
+	{
+		params ["_container"];
+
+		private _intermediary = typeOf _container createVehicleLocal (call SPM_Util_RandomSpawnPosition);
+		_intermediary enableSimulation false;
+		_intermediary allowDamage false;
+		[_intermediary, _container] call JB_fnc_containerClone;
+
+		disableSerialization;
+		missionNamespace setVariable ["BIS_fnc_initCuratorAttributes_target", _intermediary];
+		createDialog "RscDisplayAttributesInventory";
+
+		CLIENT_EditContainerInventoryResult = 1;
+
+		private _index = allDisplays findIf { (_x getVariable ["BIS_fnc_initDisplay_configClass", ""]) == "RscDisplayAttributesInventory" };
+		if (_index != -1) then
+		{
+			(alldisplays select _index) displayAddEventHandler ["Unload", { CLIENT_EditContainerInventoryResult = (_this select 1) }];
+		};
+
+		waitUntil { sleep 1; not dialog };
+
+		if (CLIENT_EditContainerInventoryResult == 2) exitWith {};
+
+		private _whitelistGear = call compile preprocessFile "scripts\whitelistGear.sqf";
+		_whitelistGear = [(_whitelistGear select 0) + ["Put", "Throw"], _whitelistGear select 1, (_whitelistGear select 2) + (_whitelistGear select 3)]; // Put the glasses in with the items
+
+		private _whiteListMagazines = [_whitelistGear select 0] call compile preprocessFile "scripts\whitelistMagazines.sqf";
+
+		titleText ["Making changes...", "plain down", 0.2];
+		sleep 1;
+
+		[_container, _intermediary, _whitelistGear + [_whitelistMagazines]] call JB_fnc_containerClone; // Combined whitelist of [weapons, backpacks, items, magazines]
+
+		//TODO: Report items that didn't make it through the whitelist filter.  That would be the contents of _intermediary that aren't in _container
+
+		titleText ["Changes complete", "plain down", 0.2];
+
+		deleteVehicle _intermediary;
+	};
+};
+
 Base_Supply_Drop_Ammo_C_SetupActions =
 {
 	params ["_container"];
 
-	_container addAction ["Restock ammunition from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Ammo_StockContainer", 2] }, nil, 5, false, true, '', '[_target, "arsenal", 10] call CLIENT_Supply_RestockFromSupplyCondition', 2];
+	_container addAction ["Restock ammunition from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Ammo_StockContainer", _this select 0] }, nil, 5, false, true, '', 'not isNull ([_target, "arsenal", 5] call CLIENT_NearSupply)', 2];
 };
 
 Base_Supply_Drop_Items_C_SetupActions =
 {
 	params ["_container"];
 
-	_container addAction ["Restock miscellaneous items from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Items_StockContainer", 2] }, nil, 5, false, true, '', '[_target, "arsenal", 10] call CLIENT_Supply_RestockFromSupplyCondition', 2];
+	_container addAction ["Restock miscellaneous items from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Items_StockContainer", _this select 0] }, nil, 5, false, true, '', 'not isNull ([_target, "arsenal", 5] call CLIENT_NearSupply)', 2];
 };
 
 Base_Supply_Drop_Mortars_C_SetupActions =
 {
 	params ["_container"];
 
-	_container addAction ["Restock mortars from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Mortars_StockContainer", 2] }, nil, 5, false, true, '', '[_target, "arsenal", 10] call CLIENT_Supply_RestockFromSupplyCondition', 2];
+	_container addAction ["Restock mortars from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Mortars_StockContainer", _this select 0] }, nil, 5, false, true, '', 'not isNull ([_target, "arsenal", 5] call CLIENT_NearSupply)', 2];
 };
 
 Base_Supply_Drop_StaticWeapons_C_SetupActions =
 {
 	params ["_container"];
 
-	_container addAction ["Restock static weapons from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_StaticWeapons_StockContainer", 2] }, nil, 5, false, true, '', '[_target, "arsenal", 10] call CLIENT_Supply_RestockFromSupplyCondition', 2];
+	_container addAction ["Restock static weapons from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_StaticWeapons_StockContainer", _this select 0] }, nil, 5, false, true, '', 'not isNull ([_target, "arsenal", 5] call CLIENT_NearSupply)', 2];
 };
 
 Base_Supply_Drop_Weapons_C_SetupActions =
 {
 	params ["_container"];
 
-	_container addAction ["Restock weapons from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Weapons_StockContainer", 2] }, nil, 5, false, true, '', '[_target, "arsenal", 10] call CLIENT_Supply_RestockFromSupplyCondition', 2];
+	_container addAction ["Restock weapons from Arsenal", { [_this select 0] remoteExec ["Base_Supply_Drop_Weapons_StockContainer", _this select 0] }, nil, 5, false, true, '', 'not isNull ([_target, "arsenal", 5] call CLIENT_NearSupply)', 2];
 };
 
 // Rubble searching callback
@@ -1181,6 +1316,113 @@ CLIENT_EOD_RevealSpottedMine =
 	if (player distance cursorObject > 3.0) exitWith {};
 
 	if (not (cursorObject in allMines)) exitWith {};
-
+	
 	playerSide revealMine cursorObject;
+};
+
+Logistics_PlaceDepot =
+{
+	params ["_source", "_depot", "_parameters"];
+
+	_parameters params ["_depotType", "_fuelBladderType"];
+
+	_depot setRepairCargo 0;
+
+	_depot allowDamage false;
+	[_depot, false] remoteExec ["enableSimulationGlobal", 2];
+	_depot setVelocity [0,0,0];
+	[_depot] call JB_fnc_containerClear;
+	[_depot] call JB_fnc_containerLock;
+
+	if ([_depot] call JB_PO_IsTemporaryObject) exitWith {}; // Don't process the local/temporary object
+
+	_source setMass (getMass _source - 20000);
+
+	private _typeNames = ["HBarrier1", "HBarrier5", "HBarrierWall4", "HBarrierWall_corner", "HBarrierTower", "BagFence_Long", "BagBunker_Small", "BagBunker_Large", "CncBarrierMedium", "HelipadCircle", "PortableLight", _fuelBladderType];
+	[_depot, 40, 800, _typeNames] call JB_fnc_placeObjectInitializeSource;
+
+	private _result = [[_depotType], "Logistics_GetSourceResources", 2] call JB_fnc_remoteCall;
+	if (_result select 0 == JBRC_COMPLETE) then
+	{
+		private _resources = _result select 1;
+		if (count _resources > 0) then { [_depot, _resources] call JB_PO_SetSourceResources };
+	};
+};
+
+Logistics_StoreDepot =
+{
+	params ["_source", "_depot", "_parameters"];
+
+	if ([_depot] call JB_PO_IsTemporaryObject) exitWith {}; // Don't process the local/temporary object
+
+	_source setMass (getMass _source + 20000);
+
+	_parameters params ["_depotType"];
+
+	private _resources = [_depot] call JB_PO_GetSourceResources;
+	[_depotType, _resources] remoteExec ["Logistics_SetSourceResources", 2];
+};
+
+Logistics_PlaceFuelBladder =
+{
+	params ["_source", "_bladder", "_parameters"];
+
+	_bladder setFuelCargo 0;
+
+	if ([_bladder] call JB_PO_IsTemporaryObject) exitWith {}; // Don't process the local/temporary object
+
+	_parameters params ["_bladderType"];
+
+	private _fuel = 5000;
+
+	private _result = [[_bladderType], "Logistics_GetSourceResources", 2] call JB_fnc_remoteCall;
+	if (_result select 0 == JBRC_COMPLETE) then
+	{
+		private _resources = _result select 1;
+		if (count _resources > 0) then { _fuel = _resources select 0 };
+	};
+
+	[_bladder, [[-3.36914,2.49219,0.468579]], _fuel, 60] call JB_fnc_fuelInitSupply;
+};
+
+Logistics_StoreFuelBladder =
+{
+	params ["_source", "_bladder", "_parameters"];
+
+	if ([_bladder] call JB_PO_IsTemporaryObject) exitWith {}; // Don't process the local/temporary object
+
+	_parameters params ["_bladderType"];
+
+	private _resources = [_bladder getVariable "JBF_FuelRemaining"]; //TODO: Need a function in JB fuel stuff to get the remaining fuel
+	[_bladderType, _resources] remoteExec ["Logistics_SetSourceResources", 2];
+};
+
+CLIENT_GetVisibleObjects =
+{
+	params ["_class"];
+
+	private _withinLimits =
+	{
+		params ["_position"];
+
+		(_position select 0) >= safeZoneX && { (_position select 0) <= safeZoneX + safeZoneW } && { (_position select 1) >= safeZoneY } && { (_position select 1) <= safeZoneY + safeZoneH }
+	};
+
+	private _positionASL = [];
+	if (not (getPosASL curatorCamera isEqualTo [0,0,0])) then
+	{
+		_positionASL = terrainIntersectAtASL [getPosASL curatorCamera, getPosASL curatorCamera vectoradd (vectorDir curatorCamera vectorMultiply 1e10)];
+	}
+	else
+	{
+		_positionASL = terrainIntersectAtASL [eyePos player, eyePos player vectoradd (eyeDirection player vectorMultiply 1e10)];
+	};
+
+	private _objects = [];
+	if (not (_positionASL isEqualTo [0,0,0])) then
+	{
+		_objects = ((ASLtoAGL _positionASL) nearObjects [_class, 1000]) select { [worldToScreen getPosATL _x] call _withinLimits };
+	};
+
+	_objects
 };

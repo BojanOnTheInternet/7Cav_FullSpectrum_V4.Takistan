@@ -97,7 +97,11 @@ SPM_GoToNextPerimeterPoint =
 	{
 		_state set [1, true];
 
-		private _buildingTask = [_group, _position, _checkRadius, _visit, _enter] call SPM_fnc_patrolBuildings;
+		private _buildings = nearestObjects [_position, ["HouseBase"], _checkRadius];
+		_buildings = _buildings select { random 1 < _visit };
+		_buildings = _buildings apply { [_x, random 1 < _enter] };
+
+		private _buildingTask = [_group, _buildings] call SPM_fnc_patrolBuildings;
 		if (([_buildingTask] call SPM_TaskGetState) == 0) then
 		{
 			[_buildingTask, SPM_PerimeterBuildingPatrolComplete, _task] call SPM_TaskOnComplete;

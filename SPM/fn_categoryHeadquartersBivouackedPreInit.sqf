@@ -101,7 +101,7 @@ OO_TRACE_DECL(SPM_HeadquartersBivouacked_CreateHeadquarters) =
 	{
 		private _direction = [_x, random 360] call SPM_Util_EnvironmentAlignedDirection;
 
-		private _tent = ["Land_MedicalTent_01_white_generic_open_F", _x, _direction] call SPM_fnc_spawnVehicle;
+		private _tent = ["Land_MedicalTent_01_white_generic_open_F", _x, _direction, ["can_collide", "do_not_curate"]] call SPM_fnc_spawnVehicle;
 		_tent setObjectTextureGlobal [0, selectRandom SPM_HeadquartersBivouacked_TentTextures];
 
 		OO_GET(_objective,HeadquartersBivouackedCategory,_StaticObjects) pushBack _tent;
@@ -109,7 +109,7 @@ OO_TRACE_DECL(SPM_HeadquartersBivouacked_CreateHeadquarters) =
 
 	if (count OO_GET(_objective,HeadquartersBivouackedCategory,_StaticObjects) == 0) exitWith
 	{
-		private _fire = ["Land_FirePlace_F", _center, 0] call SPM_fnc_spawnVehicle;
+		private _fire = ["Land_FirePlace_F", _center, 0, ["can_collide", "do_not_curate"]] call SPM_fnc_spawnVehicle;
 		OO_GET(_objective,HeadquartersBivouackedCategory,_StaticObjects) pushBack _fire;
 		_center
 	};

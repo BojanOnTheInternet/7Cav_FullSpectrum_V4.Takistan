@@ -35,16 +35,23 @@ JBF_FuelConsumers =
 			[[[[-0.062,0.372,-0.794], [-1,0,0]]], CAR_REFUEL_RATE]],
 		["C_Kart_01_F",
 			[[[[-0.062,0.372,-0.794], [-1,0,0]]], CAR_REFUEL_RATE]],
-		["B_Truck_01_fuel_F",
-			[[[[-1.021,0.420,-0.499], [0,0,1]]], CAR_REFUEL_RATE]],
-		["B_Truck_01_ammo_F",
+
+		["B_T_Truck_01_ammo_F",
 			[[[[-1.021,0.562,-0.509], [0,0,1]]], CAR_REFUEL_RATE]],
-		["B_Truck_01_transport_F",
-			[[[[-1.031,0.534,-0.812], [0,0,1]]], CAR_REFUEL_RATE]],
-		["B_Truck_01_medical_F", 
-			[[[[-1.189,0.584,-0.800], [0,0,1]]], CAR_REFUEL_RATE]],
-		["B_Truck_01_Repair_F", 
+		["B_T_Truck_01_box_F", 
 			[[[[-1.046,0.675,-0.896], [0,0,1]]], CAR_REFUEL_RATE]],
+		["B_T_Truck_01_covered_F",
+			[[[[-1.031,0.534,-0.812], [0,0,1]]], CAR_REFUEL_RATE]],
+		["B_T_Truck_01_fuel_F",
+			[[[[-1.021,0.420,-0.499], [0,0,1]]], CAR_REFUEL_RATE]],
+		["B_T_Truck_01_medical_F", 
+			[[[[-1.189,0.584,-0.800], [0,0,1]]], CAR_REFUEL_RATE]],
+		["B_T_Truck_01_mover_F", 
+			[[[[-1.046,0.675,-0.896], [0,0,1]]], CAR_REFUEL_RATE]],
+		["B_T_Truck_01_Repair_F", 
+			[[[[-1.046,0.675,-0.896], [0,0,1]]], CAR_REFUEL_RATE]],
+		["B_T_Truck_01_transport_F",
+			[[[[-1.031,0.534,-0.812], [0,0,1]]], CAR_REFUEL_RATE]],
 
 		["C_IDAP_Van_02_medevac_F",
 			[[[[-1.046,-0.322,-0.568], [-1,0,0]]], CAR_REFUEL_RATE]],
@@ -266,51 +273,6 @@ JBF_FuelConsumers =
 			 ], ARMOR_REFUEL_RATE]]
 	];
 
-//TODO: Refactor this as a "configure" step so it can be more cleanly handled per island.
-switch (toLower worldName) do
-{
-	case "altis":
-	{
-		JBF_StaticFuelPumps =
-		[
-			[14173.2, 16541.8, -0.094],
-			[15297.1, 17565.9, -0.283],
-			[14221.4, 18302.5, -0.069],
-			[15781.0, 17453.2, -0.285],
-			[12028.4, 15830.0, -0.038],
-			[12026.6, 15830.1, -0.034],
-			[12024.7, 15830.0, -0.029],
-			[16871.7, 15476.6,  0.010],
-			[16875.2, 15469.4,  0.037],
-			[11831.6, 14155.9, -0.034],
-			[17417.2, 13936.7, -0.106],
-			[16750.9, 12513.1, -0.052],
-			[9025.78, 15729.4, -0.020],
-			[9023.75, 15729.0, -0.027],
-			[9021.82, 15728.7, -0.029],
-			[8481.69, 18260.7, -0.026],
-			[20784.8, 16665.9, -0.052],
-			[20789.6, 16672.3, -0.021],
-			[9205.75, 12112.2, -0.048],
-			[6798.15, 15561.6, -0.044],
-			[19961.3, 11454.6, -0.034],
-			[19965.1, 11447.6, -0.048],
-			[6198.83, 15081.4, -0.091],
-			[5769.00, 20085.7, -0.015],
-			[5023.26, 14429.6, -0.097],
-			[5019.68, 14436.7, -0.011],
-			[23379.4, 19799.0, -0.054],
-			[3757.54, 13485.9, -0.010],
-			[3757.14, 13477.9, -0.054],
-			[4001.12, 12592.1, -0.096],
-			[21230.4, 7116.56, -0.060],
-			[25701.2, 21372.6, -0.077]
-		];
-	};
-
-	default { JBF_StaticFuelPumps = [] };
-};
-
 JBF_R_RetractFuelLine =
 {
 	private _key = _this select 0;
@@ -336,7 +298,7 @@ JBF_R_RetractFuelLine =
 			{
 				params ["_fuelSupply", "_fuelLine"];
 
-				scriptName "spawnJBF_R_RetractFuelLine";
+				scriptName "JBF_R_RetractFuelLine";
 
 				waitUntil { sleep 0.1; ropeUnwound _fuelLine };
 
@@ -573,7 +535,7 @@ JBF_R_GetFuelLine2 =
 				private _fuelSupplyPosition = getPos _fuelSupply;
 				_fuelSupplyPosition set [2, 0];
 
-				_ropeParent = createVehicle [ROPE_HOST_PROXY_CLASS, _fuelSupplyPosition, [], -1, "CAN_COLLIDE"];
+				_ropeParent = createVehicle [ROPE_HOST_PROXY_CLASS, _fuelSupplyPosition, [], -1, "can_collide"];
 				_ropeParent allowDamage false;
 				hideObjectGlobal _ropeParent;
 
@@ -848,7 +810,7 @@ JBF_R_FuelVehicle2 =
 		{
 			params ["_holder", "_vehicle", "_fuelHandle", "_fuelSupply", "_fuelLine"];
 
-			scriptName "spawnJBF_R_FuelVehicle2";
+			scriptName "JBF_R_FuelVehicle2";
 
 			private _fuelSupplyDescriptor = _fuelSupply getVariable ["JBF_FuelSupply", []];
 			private _vehicleDescriptor = [JBF_FuelConsumers, typeOf _vehicle] call BIS_fnc_getFromPairs;
@@ -908,23 +870,5 @@ JBF_SetupClient =
 
 	if (not hasInterface) exitWith {};
 
-	_unit addAction ["<t color='#FFFF99'>Get fuel line</t>", { [_this select 0] call JBF_GetFuelLine }, nil, 10, false, true, "", "[cursorTarget] call JBF_GetFuelLineCondition"];
+	_unit addAction ["<t color='#FFFF99'>Get fuel line</t>", { [_this select 0] call JBF_GetFuelLine }, nil, 10, false, true, "", "[cursorObject] call JBF_GetFuelLineCondition"];
 };
-
-{
-	{
-		// Remove fuel from static pumps
-		_x setFuelCargo 0;
-
-		if (isServer) then
-		{
-			// Create our proxy, then hide the originals
-			hideObjectGlobal _x;
-
-			private _replacement = createVehicle ["Land_fs_feed_f", getPosATL _x, [], 0, "CAN_COLLIDE"];
-			_replacement setDir (getDir _x);
-			_replacement setFuelCargo 0;
-			[_replacement, [[-0.396,0.035,-0.249], [0.396,0.035,-0.249]], 10000, 4.5] call JB_fnc_fuelInitSupply;
-		};
-	} forEach nearestObjects [_x, ["Land_fs_feed_f"], 2];
-} forEach JBF_StaticFuelPumps;

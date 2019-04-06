@@ -24,7 +24,7 @@ setCurrentChannel CHANNEL_GROUP;
 
 [] spawn
 {
-	scriptName "spawnChannelControlInit";
+	scriptName "ChannelControlInit";
 
 	while { true } do
 	{

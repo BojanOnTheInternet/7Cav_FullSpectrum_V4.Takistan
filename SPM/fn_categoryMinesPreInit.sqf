@@ -78,7 +78,7 @@ OO_TRACE_DECL(SPM_Mines_Update) =
 	{
 		params ["_category"];
 
-		scriptName "spawnSPM_Mines_Update";
+		scriptName "SPM_Mines_Update";
 
 		private _area = OO_GET(_category,MinesCategory,Area);
 		private _center = OO_GET(_area,StrongpointArea,Position);
