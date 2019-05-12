@@ -1,4 +1,6 @@
-private _backpackClasses = "getText (_x >> ""vehicleClass"") == ""Backpacks"" && getNumber (_x >> ""scope"") >= 1 && (getText (_x >> ""faction"") in [""Default"", ""BLU_F""])" configClasses (configFile >> "CfgVehicles");
+if (not isNil "CLIENT_WhitelistGear") exitWith { CLIENT_WhitelistGear };
+
+private _backpackClasses = "getText (_x >> ""vehicleClass"") == ""Backpacks"" && getNumber (_x >> ""scope"") >= 2 && (getText (_x >> ""faction"") in [""Default"", ""BLU_F""])" configClasses (configFile >> "CfgVehicles");
 
 private _backpackNames = [];
 {
@@ -17,7 +19,7 @@ private _configName = "";
 private _itemNames = [];
 private _weaponNames = [];
 
-private _weaponClasses = "getNumber (_x >> ""scope"") >= 1" configClasses (configFile >> "CfgWeapons");
+private _weaponClasses = "getNumber (_x >> ""scope"") >= 2" configClasses (configFile >> "CfgWeapons");
 
 {
 	if (isClass _x) then
@@ -99,7 +101,7 @@ private _weaponClasses = "getNumber (_x >> ""scope"") >= 1" configClasses (confi
 			// Gear without underscores; map, radio, etc
 			case (_configName find "_" == -1):
 			{
-				if (getText (_x >> "model") != "") then
+				if (_configName != "Zasleh2" && { getText (_x >> "model") != "" }) then
 				{
 					if (count getArray (_x >> "magazines") == 0 && { getNumber (_x >> "useAsBinocular") == 0 }) then
 					{
@@ -160,7 +162,7 @@ private _weaponClasses = "getNumber (_x >> ""scope"") >= 1" configClasses (confi
 
 private _glassesNames = [];
 
-_glassesClasses = "getNumber (_x >> ""scope"") >= 1" configClasses (configFile >> "CfgGlasses");
+_glassesClasses = "getNumber (_x >> ""scope"") >= 2" configClasses (configFile >> "CfgGlasses");
 
 {
 	if (isClass _x) then
@@ -169,4 +171,6 @@ _glassesClasses = "getNumber (_x >> ""scope"") >= 1" configClasses (configFile >
 	};
 } foreach _glassesClasses;
 
-[_weaponNames, _backpackNames, _itemNames, _glassesNames]
+CLIENT_WhitelistGear = [_weaponNames, _backpackNames, _itemNames, _glassesNames];
+
+CLIENT_WhitelistGear
